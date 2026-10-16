@@ -50,7 +50,7 @@ class _AdminAppState extends State<AdminApp> {
         ChangeNotifierProvider<AuthProvider>.value(value: _auth),
       ],
       child: MaterialApp.router(
-        title: 'Car Clean Admin',
+        title: 'Car Clean Plus Staff',
         debugShowCheckedModeBanner: false,
         theme: DeskTheme.data,
         routerConfig: _router,

@@ -36,13 +36,6 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
     'in_progress': 'completed',
   };
 
-  static const _label = {
-    'accepted': 'Accept',
-    'on_the_way': 'On the way',
-    'in_progress': 'Start',
-    'completed': 'Complete',
-  };
-
   @override
   void initState() {
     super.initState();
@@ -85,7 +78,9 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
   }
 
   void _note(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: const TextStyle(fontSize: 14))),
+    );
   }
 
   @override
@@ -93,6 +88,7 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_dayOffset == 0 ? 'Today’s jobs' : 'Tomorrow’s jobs'),
+        titleTextStyle: _Type.bar,
       ),
       body: Column(
         children: [
@@ -104,16 +100,22 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
                   width: double.infinity,
                   child: SegmentedButton<int>(
                     showSelectedIcon: false,
+                    style: const ButtonStyle(
+                      textStyle: WidgetStatePropertyAll(
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                      ),
+                      iconSize: WidgetStatePropertyAll(22),
+                    ),
                     segments: const [
                       ButtonSegment(
                         value: 0,
                         label: Text('Today'),
-                        icon: Icon(Icons.today_outlined, size: 20),
+                        icon: Icon(Icons.today_outlined, size: 22),
                       ),
                       ButtonSegment(
                         value: 1,
                         label: Text('Tomorrow'),
-                        icon: Icon(Icons.event_outlined, size: 20),
+                        icon: Icon(Icons.event_outlined, size: 22),
                       ),
                     ],
                     selected: {_dayOffset},
@@ -125,19 +127,14 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
                     },
                   ),
                 ),
-                const SizedBox(height: 10),
-                DeskCard(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                const SizedBox(height: 12),
+                _Surface(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
                   child: Row(
                     children: [
-                      const Icon(Icons.badge_outlined, size: 20, color: AppConstants.accent),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'On shift',
-                          style: TextStyle(fontWeight: FontWeight.w700, color: AppConstants.ink),
-                        ),
-                      ),
+                      const _Well(icon: Icons.badge_outlined),
+                      const SizedBox(width: 12),
+                      const Expanded(child: Text('On shift', style: _Type.section)),
                       Switch(value: _onShift, onChanged: _busy ? null : (_) => _toggleShift()),
                     ],
                   ),
@@ -147,7 +144,7 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
                     padding: EdgeInsets.only(top: 8),
                     child: Text(
                       'Off shift. Finish a job you already started. Accept needs the switch on.',
-                      style: TextStyle(color: AppConstants.muted, fontSize: 12),
+                      style: _Type.caption,
                     ),
                   ),
               ],
@@ -162,11 +159,11 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
                         ? ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.all(16),
-                            children: [
-                              DeskEmpty(
-                                message: _dayOffset == 0
-                                    ? 'Nothing assigned for today.'
-                                    : 'Nothing assigned for tomorrow.',
+                            children: const [
+                              _Explain(
+                                icon: Icons.assignment_outlined,
+                                title: 'No jobs yet',
+                                body: 'Jobs show up here when they are assigned to you.',
                               ),
                             ],
                           )
@@ -178,7 +175,6 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
                             itemBuilder: (context, index) => _JobCard(
                               job: _jobs[index],
                               next: _next[_jobs[index].status],
-                              nextLabel: _label[_next[_jobs[index].status]],
                               onShift: _onShift,
                               onAdvance: () => _advance(_jobs[index]),
                               onNavigate: () => _navigate(_jobs[index]),
@@ -285,20 +281,23 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
           children: [
             Icon(Icons.payments_outlined, size: 22, color: AppConstants.accent),
             SizedBox(width: 8),
-            Expanded(child: Text('Collected at the car')),
+            Expanded(child: Text('Collected at the car', style: _Type.section)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('₹${_whole(job.due)} still due', style: const TextStyle(color: AppConstants.muted)),
+            Text(
+              '₹${_whole(job.due)} still due',
+              style: const TextStyle(fontSize: 14, height: 1.4, color: AppConstants.muted),
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: cash,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 labelText: 'Cash',
-                prefixIcon: Icon(Icons.payments_outlined, size: 20),
+                prefixIcon: Icon(Icons.payments_outlined, size: 22),
               ),
             ),
             const SizedBox(height: 12),
@@ -307,16 +306,25 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 labelText: 'UPI',
-                prefixIcon: Icon(Icons.qr_code_2_outlined, size: 20),
+                prefixIcon: Icon(Icons.qr_code_2_outlined, size: 22),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            child: const Text('Cancel'),
+          ),
           FilledButton.icon(
             onPressed: () => Navigator.pop(context, true),
-            icon: const Icon(Icons.check_circle_outlined, size: 20),
+            style: FilledButton.styleFrom(
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            icon: const Icon(Icons.check_circle_outlined, size: 22),
             label: const Text('Save'),
           ),
         ],
@@ -413,7 +421,6 @@ class _JobCard extends StatelessWidget {
   const _JobCard({
     required this.job,
     required this.next,
-    required this.nextLabel,
     required this.onShift,
     required this.onAdvance,
     required this.onNavigate,
@@ -425,7 +432,6 @@ class _JobCard extends StatelessWidget {
 
   final BookingRecord job;
   final String? next;
-  final String? nextLabel;
   final bool onShift;
   final VoidCallback onAdvance;
   final VoidCallback onNavigate;
@@ -436,68 +442,76 @@ class _JobCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final customer = job.customerName.isEmpty ? 'Customer' : job.customerName;
     final service = [job.service, job.carName].where((part) => part.isNotEmpty).join(' · ');
-    return DeskCard(
+    final source = sourceLabel(job.source);
+    final detail = [
+      if (source.isNotEmpty) source,
+      if (service.isNotEmpty) service,
+    ].join(' · ');
+    final money = job.collected > 0
+        ? '₹${job.price} ${job.paymentMethod} · ₹${_whole(job.collected)} collected'
+        : '₹${job.price} ${job.paymentMethod}';
+    final photos = [
+      if (job.hasBeforePhoto) 'Before photo',
+      if (job.hasAfterPhoto) 'After photo',
+    ].join(' · ');
+    return _Surface(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              DeskPhoto(asset: washAssetFor(job.service), height: 64, width: 64),
+              const _Well(icon: Icons.directions_car_outlined),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    StatusPill(status: job.status),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${sourceLabel(job.source)} · ${job.customerName.isEmpty ? 'Customer' : job.customerName}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: AppConstants.ink,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
+                    Text(customer, style: _Type.section),
+                    const SizedBox(height: 4),
+                    _Line(icon: Icons.schedule_outlined, text: _pair(job.date, job.timeSlot)),
+                    const SizedBox(height: 2),
+                    _Line(icon: Icons.location_on_outlined, text: _place(job.address, job.city)),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
+              _StatusPill(status: job.status),
             ],
           ),
-          MetaRow(icon: Icons.directions_car_outlined, text: service),
-          MetaRow(icon: Icons.calendar_today_outlined, text: '${job.date} · ${job.timeSlot}'),
-          MetaRow(icon: Icons.location_on_outlined, text: '${job.address}, ${job.city}'),
-          MetaRow(
-            icon: Icons.currency_rupee_outlined,
-            text: job.collected > 0
-                ? '₹${job.price} ${job.paymentMethod} · ₹${_whole(job.collected)} collected'
-                : '₹${job.price} ${job.paymentMethod}',
-          ),
-          if (job.instructions.isNotEmpty)
-            MetaRow(icon: Icons.notes_outlined, text: job.instructions),
-          if (job.clockedIn)
-            const MetaRow(icon: Icons.timer_outlined, text: 'Clocked in'),
-          if (job.hasBeforePhoto || job.hasAfterPhoto)
-            MetaRow(
-              icon: Icons.photo_outlined,
-              text: [
-                if (job.hasBeforePhoto) 'Before photo',
-                if (job.hasAfterPhoto) 'After photo',
-              ].join(' · '),
-            ),
+          if (detail.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(detail, style: _Type.caption),
+          ],
+          const SizedBox(height: 4),
+          Text(money, style: _Type.caption),
+          if (job.instructions.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(job.instructions, style: _Type.caption),
+          ],
+          if (job.clockedIn) ...[
+            const SizedBox(height: 4),
+            const Text('Clocked in', style: _Type.caption),
+          ],
+          if (photos.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(photos, style: _Type.caption),
+          ],
           if (job.mobile.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: TextButton.icon(
                 onPressed: () => dialNumber(job.mobile),
-                icon: const Icon(Icons.phone_outlined, size: 20),
+                icon: const Icon(Icons.phone_outlined, size: 22),
                 label: Text(job.mobile),
                 style: TextButton.styleFrom(
-                  foregroundColor: AppConstants.ink,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  visualDensity: VisualDensity.compact,
+                  foregroundColor: AppConstants.accent,
+                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+                  minimumSize: const Size(44, 44),
+                  tapTargetSize: MaterialTapTargetSize.padded,
                 ),
               ),
             ),
@@ -507,22 +521,214 @@ class _JobCard extends StatelessWidget {
             onShift: onShift,
             onNext: next != null && (next != 'accepted' || onShift) ? onAdvance : null,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               if (job.address.isNotEmpty || job.city.isNotEmpty || job.latitude != null)
-                DeskAction(icon: Icons.navigation_outlined, label: 'Navigate', onPressed: onNavigate),
+                _Tap(icon: Icons.navigation_outlined, label: 'Navigate', onPressed: onNavigate),
               if (job.status != 'completed')
-                DeskAction(icon: Icons.photo_camera_outlined, label: 'Before', onPressed: onBefore),
+                _Tap(icon: Icons.photo_camera_outlined, label: 'Before', onPressed: onBefore),
               if (job.status == 'in_progress' || (job.status == 'completed' && !job.hasAfterPhoto))
-                DeskAction(icon: Icons.image_outlined, label: 'After', onPressed: onAfter),
+                _Tap(icon: Icons.image_outlined, label: 'After', onPressed: onAfter),
               if (job.due > 0 && const {'accepted', 'on_the_way', 'in_progress', 'completed'}.contains(job.status))
-                DeskAction(icon: Icons.payments_outlined, label: 'Collected', onPressed: onCollect),
+                _Tap(icon: Icons.payments_outlined, label: 'Collected', onPressed: onCollect),
               if (!job.clockedIn && const {'accepted', 'on_the_way', 'in_progress'}.contains(job.status))
-                DeskAction(icon: Icons.timer_outlined, label: 'Clock in', onPressed: onClockIn),
+                _Tap(icon: Icons.timer_outlined, label: 'Clock in', onPressed: onClockIn),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _pair(String a, String b) {
+  final kept = [a, b].where((part) => part.trim().isNotEmpty).toList();
+  return kept.isEmpty ? '—' : kept.join(' · ');
+}
+
+String _place(String address, String city) {
+  final kept = [address, city].where((part) => part.trim().isNotEmpty).toList();
+  return kept.isEmpty ? '—' : kept.join(', ');
+}
+
+class _Type {
+  static const bar = TextStyle(
+    color: AppConstants.ink,
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+  );
+  static const section = TextStyle(
+    fontSize: 16,
+    height: 1.25,
+    fontWeight: FontWeight.w700,
+    color: AppConstants.ink,
+  );
+  static const caption = TextStyle(
+    fontSize: 12,
+    height: 1.3,
+    color: AppConstants.muted,
+  );
+}
+
+class _Surface extends StatelessWidget {
+  const _Surface({
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+  });
+
+  final Widget child;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppConstants.line),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _Well extends StatelessWidget {
+  const _Well({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 44,
+      height: 44,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppConstants.iconWell,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(icon, size: 22, color: AppConstants.accent),
+    );
+  }
+}
+
+class _Line extends StatelessWidget {
+  const _Line({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 22, color: AppConstants.accent),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 14, height: 1.35, color: AppConstants.ink),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = statusTone(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: tone.background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        prettyStatus(status),
+        style: TextStyle(
+          color: tone.foreground,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _Tap extends StatelessWidget {
+  const _Tap({required this.icon, required this.label, required this.onPressed});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: const StadiumBorder(side: BorderSide(color: AppConstants.line)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 22, color: AppConstants.accent),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppConstants.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Explain extends StatelessWidget {
+  const _Explain({required this.icon, required this.title, required this.body});
+
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 36, 8, 12),
+      child: Column(
+        children: [
+          _Well(icon: icon),
+          const SizedBox(height: 16),
+          Text(title, textAlign: TextAlign.center, style: _Type.section),
+          const SizedBox(height: 8),
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14, height: 1.4, color: AppConstants.muted),
           ),
         ],
       ),

@@ -1,0 +1,2 @@
+json_key_file(ENV["SUPPLY_JSON_KEY"] || ENV["GOOGLE_APPLICATION_CREDENTIALS"])
+package_name("com.difmo.carcleanplusstaff")

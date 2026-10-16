@@ -1,5 +1,5 @@
-name: car_clean_admin
-description: "A new Flutter project."
+name: car_clean_staff
+description: "Car Clean Plus Staff desk and crew app."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.0+13
 
 environment:
   sdk: ^3.10.7
@@ -42,6 +42,8 @@ dependencies:
   image_picker: ^1.2.3
   geolocator: ^14.1.1
   flutter_local_notifications: ^17.2.4
+  firebase_core: ^3.13.0
+  firebase_messaging: ^15.2.4
 
 dev_dependencies:
   flutter_test:
@@ -70,6 +72,11 @@ flutter:
     - assets/basic_wash.png
     - assets/interior_cleaning.png
     - assets/logo.png
+
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-Variable.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

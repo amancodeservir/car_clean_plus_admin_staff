@@ -9,6 +9,28 @@ import '../providers/auth_provider.dart';
 import '../services/admin_service.dart';
 import '../theme/desk_theme.dart';
 
+const _ink14 = TextStyle(
+  fontSize: 14,
+  fontWeight: FontWeight.w700,
+  color: AppConstants.ink,
+);
+
+const _body14 = TextStyle(fontSize: 14, color: AppConstants.ink);
+
+const _muted14 = TextStyle(
+  fontSize: 14,
+  color: AppConstants.muted,
+  height: 1.25,
+);
+
+const _label12 = TextStyle(fontSize: 12, color: AppConstants.muted);
+
+const _source12 = TextStyle(
+  fontSize: 12,
+  fontWeight: FontWeight.w700,
+  color: AppConstants.accent,
+);
+
 class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
 
@@ -22,12 +44,20 @@ class _BookingsScreenState extends State<BookingsScreen> {
   String _query = '';
   String _status = '';
   String _payment = '';
+  String _date = '';
+  String? _routeKey;
 
   static const _payments = ['Cash', 'UPI', 'Online', 'Pending', 'N/A'];
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final params = GoRouterState.of(context).uri.queryParameters;
+    final key = '${params['status'] ?? ''}|${params['date'] ?? ''}';
+    if (key == _routeKey) return;
+    _routeKey = key;
+    _status = params['status'] ?? '';
+    _date = params['date'] ?? '';
     _load();
   }
 
@@ -37,10 +67,10 @@ class _BookingsScreenState extends State<BookingsScreen> {
     final list = await runGuarded(
       context,
       context.read<AdminService>().bookings(
-            token,
-            query:
-                '?status=${Uri.encodeQueryComponent(_status)}&payment=${Uri.encodeQueryComponent(_payment)}',
-          ),
+        token,
+        query:
+            '?status=${Uri.encodeQueryComponent(_status)}&payment=${Uri.encodeQueryComponent(_payment)}&date=${Uri.encodeQueryComponent(_date)}',
+      ),
     );
     if (!mounted) return;
     setState(() {
@@ -76,63 +106,34 @@ class _BookingsScreenState extends State<BookingsScreen> {
   Widget build(BuildContext context) {
     final visible = _visible;
     return Scaffold(
+      backgroundColor: AppConstants.paper,
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: TextField(
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search_outlined, size: 20),
-                hintText: 'Search name, phone, date, status',
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: _FilterBlock(
+              status: _status,
+              payment: _payment,
+              payments: _payments,
+              onQuery: (value) => setState(() => _query = value),
+              onStatus: (value) {
+                _status = value ?? '';
+                _load();
+              },
+              onPayment: (value) {
+                _payment = value ?? '';
+                _load();
+              },
+            ),
+          ),
+          if (_date.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Wash date $_date', style: deskCaption.copyWith(color: AppConstants.accent, fontWeight: FontWeight.w700)),
               ),
-              onChanged: (value) => setState(() => _query = value),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey('status-$_status'),
-                    initialValue: _status,
-                    isExpanded: true,
-                    decoration: _filterField('Status', Icons.flag_outlined),
-                    items: [
-                      const DropdownMenuItem(value: '', child: Text('All statuses')),
-                      for (final status in AppConstants.statuses)
-                        DropdownMenuItem(
-                          value: status,
-                          child: Text(prettyStatus(status), overflow: TextOverflow.ellipsis),
-                        ),
-                    ],
-                    onChanged: (value) {
-                      _status = value ?? '';
-                      _load();
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey('payment-$_payment'),
-                    initialValue: _payment,
-                    isExpanded: true,
-                    decoration: _filterField('Payment', Icons.payments_outlined),
-                    items: [
-                      const DropdownMenuItem(value: '', child: Text('All payments')),
-                      for (final payment in _payments)
-                        DropdownMenuItem(value: payment, child: Text(payment)),
-                    ],
-                    onChanged: (value) {
-                      _payment = value ?? '';
-                      _load();
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _load,
@@ -140,19 +141,17 @@ class _BookingsScreenState extends State<BookingsScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                       itemCount: visible.isEmpty ? 1 : visible.length,
                       itemBuilder: (context, index) {
                         if (visible.isEmpty) {
                           return const DeskEmpty(message: 'No bookings match.');
                         }
                         final booking = visible[index];
-                        final title = booking.customerName.isEmpty
-                            ? booking.service
-                            : booking.customerName;
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: DeskCard(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _BookingCard(
+                            booking: booking,
                             onTap: () async {
                               final changed = await context.push<bool>(
                                 '/desk/booking',
@@ -160,105 +159,34 @@ class _BookingsScreenState extends State<BookingsScreen> {
                               );
                               if (changed == true) _load();
                             },
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                DeskPhoto(
-                                  asset: washAssetFor(booking.service),
-                                  height: 64,
-                                  width: 64,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        title.isEmpty ? 'Booking' : title,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 16,
-                                          color: AppConstants.ink,
-                                        ),
-                                      ),
-                                      Text(
-                                        sourceLabel(booking.source),
-                                        style: const TextStyle(
-                                          color: AppConstants.accent,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.calendar_today_outlined,
-                                            size: 20,
-                                            color: AppConstants.accent,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              '${booking.date} · ${booking.timeSlot}',
-                                              style: const TextStyle(
-                                                color: AppConstants.muted,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.directions_car_outlined,
-                                            size: 20,
-                                            color: AppConstants.accent,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              booking.service,
-                                              style: const TextStyle(
-                                                color: AppConstants.ink,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                StatusPill(status: booking.status),
-                              ],
-                            ),
                           ),
                         );
                       },
                     ),
             ),
           ),
-        ],
-      ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'block',
-            onPressed: () => _openPath('/desk/block'),
-            icon: const Icon(Icons.event_busy_outlined, size: 20),
-            label: const Text('Block slot'),
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton.extended(
-            heroTag: 'phone',
-            onPressed: () => _openPath('/desk/phone'),
-            icon: const Icon(Icons.add_ic_call_outlined, size: 20),
-            label: const Text('Phone booking'),
+          const Divider(height: 1, color: AppConstants.line),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _BarButton(
+                    icon: Icons.event_busy_outlined,
+                    label: 'Block slot',
+                    onPressed: () => _openPath('/desk/block'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _BarButton(
+                    icon: Icons.add_ic_call_outlined,
+                    label: 'Phone booking',
+                    onPressed: () => _openPath('/desk/phone'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -266,10 +194,287 @@ class _BookingsScreenState extends State<BookingsScreen> {
   }
 }
 
-InputDecoration _filterField(String label, IconData icon) {
+class _FilterBlock extends StatelessWidget {
+  const _FilterBlock({
+    required this.status,
+    required this.payment,
+    required this.payments,
+    required this.onQuery,
+    required this.onStatus,
+    required this.onPayment,
+  });
+
+  final String status;
+  final String payment;
+  final List<String> payments;
+  final ValueChanged<String> onQuery;
+  final ValueChanged<String?> onStatus;
+  final ValueChanged<String?> onPayment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppConstants.line),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            TextField(
+              style: _body14,
+              decoration: _plainField(
+                icon: Icons.search_outlined,
+                hint: 'Search name, phone, date, status',
+              ),
+              onChanged: onQuery,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    key: ValueKey('status-$status'),
+                    initialValue: status,
+                    isExpanded: true,
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down_outlined,
+                      size: 22,
+                      color: AppConstants.muted,
+                    ),
+                    style: _ink14,
+                    decoration: _plainField(
+                      icon: Icons.flag_outlined,
+                      label: 'Status',
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: '',
+                        child: Text(
+                          'All statuses',
+                          overflow: TextOverflow.ellipsis,
+                          style: _ink14,
+                        ),
+                      ),
+                      for (final item in AppConstants.statuses)
+                        DropdownMenuItem(
+                          value: item,
+                          child: Text(
+                            prettyStatus(item),
+                            overflow: TextOverflow.ellipsis,
+                            style: _ink14,
+                          ),
+                        ),
+                    ],
+                    onChanged: onStatus,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    key: ValueKey('payment-$payment'),
+                    initialValue: payment,
+                    isExpanded: true,
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down_outlined,
+                      size: 22,
+                      color: AppConstants.muted,
+                    ),
+                    style: _ink14,
+                    decoration: _plainField(
+                      icon: Icons.payments_outlined,
+                      label: 'Payment',
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: '',
+                        child: Text(
+                          'All payments',
+                          overflow: TextOverflow.ellipsis,
+                          style: _ink14,
+                        ),
+                      ),
+                      for (final item in payments)
+                        DropdownMenuItem(
+                          value: item,
+                          child: Text(
+                            item,
+                            overflow: TextOverflow.ellipsis,
+                            style: _ink14,
+                          ),
+                        ),
+                    ],
+                    onChanged: onPayment,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+const _controlRadius = BorderRadius.all(Radius.circular(16));
+
+InputDecoration _plainField({
+  required IconData icon,
+  String? label,
+  String? hint,
+}) {
+  const border = OutlineInputBorder(
+    borderRadius: _controlRadius,
+    borderSide: BorderSide(color: AppConstants.line),
+  );
   return InputDecoration(
     labelText: label,
-    isDense: true,
-    prefixIcon: Icon(icon, size: 20),
+    hintText: hint,
+    labelStyle: _label12,
+    floatingLabelStyle: _label12,
+    hintStyle: _muted14,
+    prefixIcon: Icon(icon, size: 22, color: AppConstants.accent),
+    filled: true,
+    fillColor: AppConstants.paper,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    border: border,
+    enabledBorder: border,
+    focusedBorder: const OutlineInputBorder(
+      borderRadius: _controlRadius,
+      borderSide: BorderSide(color: AppConstants.accent, width: 1.5),
+    ),
   );
+}
+
+class _BookingCard extends StatelessWidget {
+  const _BookingCard({required this.booking, required this.onTap});
+
+  final BookingRecord booking;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = booking.customerName.isEmpty
+        ? booking.service
+        : booking.customerName;
+    return Material(
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppConstants.line),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DeskPhoto(
+                asset: washAssetFor(booking.service),
+                height: 64,
+                width: 64,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title.isEmpty ? 'Booking' : title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _ink14,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(sourceLabel(booking.source), style: _source12),
+                    const SizedBox(height: 6),
+                    _MetaLine(
+                      icon: Icons.calendar_today_outlined,
+                      text: '${booking.date} · ${booking.timeSlot}',
+                    ),
+                    const SizedBox(height: 4),
+                    _MetaLine(
+                      icon: Icons.directions_car_outlined,
+                      text: booking.service,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              StatusPill(status: booking.status),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MetaLine extends StatelessWidget {
+  const _MetaLine({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 22, color: AppConstants.accent),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: _muted14,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BarButton extends StatelessWidget {
+  const _BarButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: AppConstants.accent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        minimumSize: const Size(0, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        shape: const StadiumBorder(),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+      ),
+      icon: Icon(icon, size: 22, color: Colors.white),
+      label: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
 }

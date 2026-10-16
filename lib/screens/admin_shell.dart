@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
+import '../theme/desk_theme.dart';
 import 'account_screens.dart';
 
 class AdminShell extends StatelessWidget {
@@ -21,7 +22,7 @@ class AdminShell extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
-        title: const Text('Wash desk'),
+        title: const Text('Staff', style: deskTitle),
         actions: const [DeskAlertButton()],
       ),
       body: shell,
@@ -42,13 +43,13 @@ class AdminShell extends StatelessWidget {
                       initialLocation: index == shell.currentIndex,
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             _items[index].$1,
-                            size: 22,
+                            size: deskIconSize,
                             color: shell.currentIndex == index
                                 ? AppConstants.accent
                                 : AppConstants.muted,
@@ -62,7 +63,8 @@ class AdminShell extends StatelessWidget {
                                   ? AppConstants.accent
                                   : AppConstants.muted,
                               fontWeight: FontWeight.w700,
-                              fontSize: 11,
+                              fontSize: 12,
+                              height: 1.25,
                             ),
                           ),
                         ],

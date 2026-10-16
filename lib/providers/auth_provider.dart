@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/models.dart';
 import '../services/auth_service.dart';
+import '../services/push_registrar.dart';
 
 class AuthProvider extends ChangeNotifier {
   AuthProvider(this._authService) {
@@ -27,6 +28,11 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _restore() async {
     try {
       _account = await _authService.restore();
+      if (token.isNotEmpty) {
+        try {
+          await PushRegistrar.register(token);
+        } catch (_) {}
+      }
     } catch (_) {
       _account = null;
     } finally {
@@ -42,6 +48,9 @@ class AuthProvider extends ChangeNotifier {
     try {
       _account = await _authService.login(email.trim(), password, code: code);
       _otpPending = false;
+      try {
+        await PushRegistrar.register(token);
+      } catch (_) {}
       _busy = false;
       notifyListeners();
       return true;

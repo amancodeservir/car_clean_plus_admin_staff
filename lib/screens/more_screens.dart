@@ -13,6 +13,26 @@ import '../services/admin_service.dart';
 import '../theme/desk_theme.dart';
 import 'desk_tools.dart';
 
+const _sectionTitle = TextStyle(
+  fontSize: 16,
+  height: 1.2,
+  fontWeight: FontWeight.w700,
+  color: AppConstants.ink,
+);
+
+const _rowTitle = TextStyle(
+  fontSize: 14,
+  height: 1.2,
+  fontWeight: FontWeight.w700,
+  color: AppConstants.ink,
+);
+
+const _caption = TextStyle(
+  fontSize: 12,
+  height: 1.25,
+  color: AppConstants.muted,
+);
+
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
 
@@ -21,29 +41,29 @@ class MoreScreen extends StatelessWidget {
     final account = context.watch<AuthProvider>().account;
     final name = account?.name ?? '';
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        DeskCard(
+        _Surface(
           child: Row(
             children: [
-              const IconWell(icon: Icons.account_circle_outlined),
+              const _IconBox(icon: Icons.account_circle_outlined),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      name.isEmpty ? 'Wash desk' : name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                        color: AppConstants.ink,
-                      ),
+                      name.isEmpty ? 'Car Clean Plus Staff' : name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _sectionTitle,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       account?.email ?? '',
-                      style: const TextStyle(color: AppConstants.muted, fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: _caption,
                     ),
                     const SizedBox(height: 8),
                     _RolePill(role: account?.role ?? ''),
@@ -53,21 +73,12 @@ class MoreScreen extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 18),
-        const Row(
-          children: [
-            Icon(Icons.grid_view_outlined, size: 20, color: AppConstants.accent),
-            SizedBox(width: 8),
-            Text(
-              'Desk tools',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppConstants.ink),
-            ),
-          ],
-        ),
+        const SizedBox(height: 20),
+        const Text('Desk tools', style: _sectionTitle),
         const SizedBox(height: 10),
         const _DeskToolGrid(),
-        const SizedBox(height: 16),
-        DeskCard(
+        const SizedBox(height: 20),
+        _Surface(
           padding: EdgeInsets.zero,
           child: Column(
             children: [
@@ -76,31 +87,31 @@ class MoreScreen extends StatelessWidget {
                 title: 'Alerts',
                 onTap: () => context.push('/desk/alerts'),
               ),
-              const Divider(height: 1),
+              const Divider(height: 1, thickness: 1),
               _MoreTile(
                 icon: Icons.person_outlined,
                 title: 'Profile',
                 onTap: () => context.push('/desk/profile'),
               ),
-              const Divider(height: 1),
+              const Divider(height: 1, thickness: 1),
               _MoreTile(
                 icon: Icons.mail_outlined,
                 title: 'Enquiries',
                 onTap: () => context.push('/desk/contacts'),
               ),
-              const Divider(height: 1),
+              const Divider(height: 1, thickness: 1),
               _MoreTile(
                 icon: Icons.photo_library_outlined,
                 title: 'Gallery',
                 onTap: () => context.push('/desk/gallery'),
               ),
-              const Divider(height: 1),
+              const Divider(height: 1, thickness: 1),
               _MoreTile(
                 icon: Icons.celebration_outlined,
                 title: 'Festival offer',
                 onTap: () => context.push('/desk/festival'),
               ),
-              const Divider(height: 1),
+              const Divider(height: 1, thickness: 1),
               _MoreTile(
                 icon: Icons.logout_outlined,
                 title: 'Log out',
@@ -111,6 +122,54 @@ class MoreScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _Surface extends StatelessWidget {
+  const _Surface({
+    required this.child,
+    this.padding = const EdgeInsets.all(14),
+  });
+
+  final Widget child;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppConstants.line, width: 1),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(padding: padding, child: child),
+      ),
+    );
+  }
+}
+
+class _IconBox extends StatelessWidget {
+  const _IconBox({required this.icon, this.color});
+
+  final IconData icon;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppConstants.iconWell,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(icon, size: 22, color: color ?? AppConstants.accent),
     );
   }
 }
@@ -131,7 +190,12 @@ class _RolePill extends StatelessWidget {
       ),
       child: Text(
         role,
-        style: const TextStyle(color: AppConstants.accent, fontSize: 11, fontWeight: FontWeight.w700),
+        style: const TextStyle(
+          color: AppConstants.accent,
+          fontSize: 12,
+          height: 1.2,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -152,11 +216,23 @@ class _MoreTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: IconWell(icon: icon, iconColor: iconColor),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-      trailing: const Icon(Icons.chevron_right_outlined, size: 20, color: AppConstants.muted),
+    return InkWell(
       onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        child: Row(
+          children: [
+            _IconBox(icon: icon, color: iconColor),
+            const SizedBox(width: 12),
+            Expanded(child: Text(title, style: _rowTitle)),
+            const Icon(
+              Icons.chevron_right_outlined,
+              size: 22,
+              color: AppConstants.muted,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -166,13 +242,15 @@ class _DeskToolGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
+    return GridView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 8,
-      mainAxisSpacing: 8,
-      childAspectRatio: 2.2,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        mainAxisExtent: 72,
+      ),
       children: [
         for (final link in deskToolLinks)
           DeskToolTile(
@@ -236,7 +314,9 @@ class _ContactsScreenState extends State<ContactsScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: DeskCard(
-                            onTap: item.phone.isEmpty ? null : () => dialNumber(item.phone),
+                            onTap: item.phone.isEmpty
+                                ? null
+                                : () => dialNumber(item.phone),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -246,7 +326,9 @@ class _ContactsScreenState extends State<ContactsScreen> {
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
-                                        item.subject.isEmpty ? item.name : item.subject,
+                                        item.subject.isEmpty
+                                            ? item.name
+                                            : item.subject,
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w800,
                                           color: AppConstants.ink,
@@ -255,22 +337,45 @@ class _ContactsScreenState extends State<ContactsScreen> {
                                     ),
                                     Text(
                                       shortDate(item.createdAt),
-                                      style: const TextStyle(color: AppConstants.muted, fontSize: 12),
+                                      style: const TextStyle(
+                                        color: AppConstants.muted,
+                                        fontSize: 12,
+                                      ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-                                Text(item.name, style: const TextStyle(color: AppConstants.muted)),
+                                Text(
+                                  item.name,
+                                  style: const TextStyle(
+                                    color: AppConstants.muted,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
-                                Text(item.message, style: const TextStyle(color: AppConstants.ink, height: 1.35)),
+                                Text(
+                                  item.message,
+                                  style: const TextStyle(
+                                    color: AppConstants.ink,
+                                    height: 1.35,
+                                  ),
+                                ),
                                 if (item.phone.isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 8),
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.phone_outlined, size: 20, color: AppConstants.accent),
+                                        const Icon(
+                                          Icons.phone_outlined,
+                                          size: 20,
+                                          color: AppConstants.accent,
+                                        ),
                                         const SizedBox(width: 6),
-                                        Text(item.phone, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                        Text(
+                                          item.phone,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -362,7 +467,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton.icon(
             onPressed: () => Navigator.pop(context, true),
             icon: const Icon(Icons.add_outlined, size: 20),
@@ -434,7 +542,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: DeskCard(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                             child: Row(
                               children: [
                                 ClipRRect(
@@ -448,17 +559,25 @@ class _GalleryScreenState extends State<GalleryScreen> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        item.title.isEmpty ? item.category : item.title,
-                                        style: const TextStyle(fontWeight: FontWeight.w800, color: AppConstants.ink),
+                                        item.title.isEmpty
+                                            ? item.category
+                                            : item.title,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          color: AppConstants.ink,
+                                        ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         item.isActive ? 'Visible' : 'Hidden',
                                         style: TextStyle(
-                                          color: item.isActive ? AppConstants.completed : AppConstants.muted,
+                                          color: item.isActive
+                                              ? AppConstants.completed
+                                              : AppConstants.muted,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w700,
                                         ),
@@ -473,7 +592,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
                                 IconButton(
                                   tooltip: 'Delete',
                                   onPressed: () => _delete(item),
-                                  icon: const Icon(Icons.delete_outlined, size: 22),
+                                  icon: const Icon(
+                                    Icons.delete_outlined,
+                                    size: 22,
+                                  ),
                                 ),
                               ],
                             ),
@@ -529,9 +651,9 @@ class _FestivalScreenState extends State<FestivalScreen> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Festival offer saved')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Festival offer saved')));
     }
   }
 
@@ -543,66 +665,81 @@ class _FestivalScreenState extends State<FestivalScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : setting == null
-              ? const Center(child: Text('Festival settings could not be loaded.'))
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    const DeskPhoto(asset: AppConstants.interiorWash, height: 140),
-                    const SizedBox(height: 14),
-                    DeskCard(
-                      child: Column(
-                        children: [
-                          DropdownButtonFormField<String>(
-                            initialValue: AppConstants.festivals.contains(setting.activeFestival)
-                                ? setting.activeFestival
-                                : 'GENERAL',
-                            decoration: const InputDecoration(
-                              labelText: 'Festival',
-                              prefixIcon: Icon(Icons.celebration_outlined, size: 20),
-                            ),
-                            items: [
-                              for (final item in AppConstants.festivals)
-                                DropdownMenuItem(value: item, child: Text(item)),
-                            ],
-                            onChanged: (value) {
-                              if (value == null) return;
-                              setState(() {
-                                _setting = FestivalSetting(
-                                  activeFestival: value,
-                                  isOfferActive: setting.isOfferActive,
-                                  customOfferPrice: setting.customOfferPrice,
-                                  customDiscount: setting.customDiscount,
-                                );
-                              });
-                            },
+          ? const Center(child: Text('Festival settings could not be loaded.'))
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                const DeskPhoto(asset: AppConstants.interiorWash, height: 140),
+                const SizedBox(height: 14),
+                DeskCard(
+                  child: Column(
+                    children: [
+                      DropdownButtonFormField<String>(
+                        initialValue:
+                            AppConstants.festivals.contains(
+                              setting.activeFestival,
+                            )
+                            ? setting.activeFestival
+                            : 'GENERAL',
+                        decoration: const InputDecoration(
+                          labelText: 'Festival',
+                          prefixIcon: Icon(
+                            Icons.celebration_outlined,
+                            size: 20,
                           ),
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            secondary: const Icon(Icons.local_offer_outlined, size: 22, color: AppConstants.accent),
-                            title: const Text('Offer is active'),
-                            value: setting.isOfferActive,
-                            onChanged: (value) {
-                              setState(() {
-                                _setting = FestivalSetting(
-                                  activeFestival: setting.activeFestival,
-                                  isOfferActive: value,
-                                  customOfferPrice: setting.customOfferPrice,
-                                  customDiscount: setting.customDiscount,
-                                );
-                              });
-                            },
-                          ),
+                        ),
+                        items: [
+                          for (final item in AppConstants.festivals)
+                            DropdownMenuItem(value: item, child: Text(item)),
                         ],
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() {
+                            _setting = FestivalSetting(
+                              activeFestival: value,
+                              isOfferActive: setting.isOfferActive,
+                              customOfferPrice: setting.customOfferPrice,
+                              customDiscount: setting.customDiscount,
+                            );
+                          });
+                        },
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: _busy ? null : _save,
-                      icon: Icon(_busy ? Icons.hourglass_bottom_outlined : Icons.save_outlined, size: 20),
-                      label: Text(_busy ? 'Saving…' : 'Save'),
-                    ),
-                  ],
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        secondary: const Icon(
+                          Icons.local_offer_outlined,
+                          size: 22,
+                          color: AppConstants.accent,
+                        ),
+                        title: const Text('Offer is active'),
+                        value: setting.isOfferActive,
+                        onChanged: (value) {
+                          setState(() {
+                            _setting = FestivalSetting(
+                              activeFestival: setting.activeFestival,
+                              isOfferActive: value,
+                              customOfferPrice: setting.customOfferPrice,
+                              customDiscount: setting.customDiscount,
+                            );
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: _busy ? null : _save,
+                  icon: Icon(
+                    _busy
+                        ? Icons.hourglass_bottom_outlined
+                        : Icons.save_outlined,
+                    size: 20,
+                  ),
+                  label: Text(_busy ? 'Saving…' : 'Save'),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -626,6 +763,7 @@ Widget _galleryThumb(String url) {
   return Image.network(
     url,
     fit: BoxFit.cover,
-    errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image_outlined, size: 22),
+    errorBuilder: (context, error, stackTrace) =>
+        const Icon(Icons.broken_image_outlined, size: 22),
   );
 }

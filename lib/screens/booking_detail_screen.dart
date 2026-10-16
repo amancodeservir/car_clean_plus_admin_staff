@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -80,15 +82,26 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete this booking?'),
+        title: const Text('Delete this booking?', style: _titleStyle),
         content: Text(
           _status == 'blocked'
               ? 'This opens the slot again for customers.'
               : 'This removes the booking from the server.',
+          style: _bodyStyle,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: _actionStyle),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              textStyle: _actionStyle,
+              shape: const StadiumBorder(),
+            ),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -122,11 +135,21 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Refund this booking?'),
-        content: Text('Amount ₹${widget.booking.price}'),
+        title: const Text('Refund this booking?', style: _titleStyle),
+        content: Text('Amount ₹${widget.booking.price}', style: _bodyStyle),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Refund')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: _actionStyle),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              textStyle: _actionStyle,
+              shape: const StadiumBorder(),
+            ),
+            child: const Text('Refund'),
+          ),
         ],
       ),
     );
@@ -166,179 +189,526 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     return name;
   }
 
+  Widget? _memoryImage(String value) {
+    if (!value.startsWith('data:image')) return null;
+    final comma = value.indexOf(',');
+    if (comma < 0 || comma + 1 >= value.length) return null;
+    try {
+      final bytes = base64Decode(value.substring(comma + 1));
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.memory(
+          bytes,
+          height: 180,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return const SizedBox(
+              height: 180,
+              child: Center(
+                child: Icon(Icons.broken_image_outlined, size: 22, color: AppConstants.muted),
+              ),
+            );
+          },
+        ),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _labeledPhoto(String value, String label) {
+    final image = _memoryImage(value);
+    if (image == null) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: _bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        image,
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final booking = widget.booking;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Booking'),
-        actions: [
-          IconButton(
-            tooltip: 'Delete',
-            onPressed: _busy ? null : _delete,
-            icon: const Icon(Icons.delete_outlined, size: 22),
-          ),
-        ],
+    final name = booking.customerName.trim();
+    final identity = name.isEmpty ? 'Booking' : name;
+    final service = booking.service.trim();
+    final notes = booking.instructions.trim();
+    final vehicleIcon = booking.carCategory == 'Bike'
+        ? Icons.two_wheeler_outlined
+        : Icons.directions_car_outlined;
+    final facts = <Widget>[
+      _FactRow(icon: Icons.calendar_today_outlined, label: 'Date', value: _textOrDash(shortDate(booking.date))),
+      _FactRow(icon: Icons.schedule_outlined, label: 'Slot', value: _textOrDash(booking.timeSlot)),
+      _FactRow(icon: vehicleIcon, label: 'Vehicle', value: _vehicleValue(booking)),
+      _FactRow(icon: Icons.location_on_outlined, label: 'Address', value: _addressValue(booking)),
+      _FactRow(icon: Icons.phone_outlined, label: 'Phone', value: _textOrDash(booking.mobile)),
+      _FactRow(icon: Icons.payments_outlined, label: 'Payment', value: _paymentValue(booking)),
+      _FactRow(icon: Icons.person_outline, label: 'Staff', value: _staffValue(booking)),
+    ];
+    if (booking.source.trim().isNotEmpty) {
+      facts.add(
+        _FactRow(icon: Icons.source_outlined, label: 'Source', value: booking.source.trim()),
+      );
+    }
+    final barTheme = Theme.of(context).appBarTheme;
+    return Theme(
+      data: Theme.of(context).copyWith(
+        appBarTheme: barTheme.copyWith(
+          backgroundColor: AppConstants.paper,
+          foregroundColor: AppConstants.ink,
+          titleTextStyle: _titleStyle,
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          DeskCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    DeskPhoto(asset: washAssetFor(booking.service), height: 72, width: 72),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          StatusPill(status: _status),
-                          const SizedBox(height: 8),
-                          Text(
-                            booking.customerName.isEmpty ? 'Booking' : booking.customerName,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: AppConstants.ink,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (booking.mobile.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        DeskAction(
-                          icon: Icons.phone_outlined,
-                          label: booking.mobile,
-                          onPressed: () => dialNumber(booking.mobile),
-                        ),
-                        DeskAction(
-                          icon: Icons.chat_outlined,
-                          label: 'WhatsApp',
-                          onPressed: _openWhatsApp,
-                        ),
-                      ],
-                    ),
-                  ),
-                MetaRow(icon: Icons.local_car_wash_outlined, text: booking.service),
-                MetaRow(
-                  icon: Icons.directions_car_outlined,
-                  text: '${booking.carName} (${booking.carCategory})',
-                ),
-                MetaRow(
-                  icon: Icons.calendar_today_outlined,
-                  text: '${booking.date} · ${booking.timeSlot}',
-                ),
-                MetaRow(
-                  icon: Icons.location_on_outlined,
-                  text: '${booking.address}, ${booking.city}',
-                ),
-                MetaRow(
-                  icon: Icons.currency_rupee_outlined,
-                  text: '₹${booking.price} · ${booking.paymentMethod}',
-                ),
-                MetaRow(icon: Icons.source_outlined, text: booking.source),
-                if (booking.instructions.isNotEmpty)
-                  MetaRow(icon: Icons.notes_outlined, text: booking.instructions),
-              ],
+      child: Scaffold(
+        backgroundColor: AppConstants.paper,
+        appBar: AppBar(
+          title: Text(identity),
+          actions: [
+            IconButton(
+              tooltip: 'Delete',
+              onPressed: _busy ? null : _delete,
+              icon: const Icon(Icons.delete_outlined, size: 22),
             ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: _busy ? null : _refund,
-            icon: const Icon(Icons.currency_rupee_outlined, size: 20),
-            label: Text('Refund ₹${booking.price}'),
-          ),
-          const SizedBox(height: 16),
-          DeskCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const IconWell(icon: Icons.badge_outlined),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        widget.booking.assignedStaffName.isEmpty
-                            ? 'No one assigned'
-                            : 'Assigned: ${widget.booking.assignedStaffName}',
-                        style: const TextStyle(fontWeight: FontWeight.w700, color: AppConstants.ink),
-                      ),
-                    ),
-                  ],
-                ),
-                if (_staff.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 12),
-                    child: Text('Make a staff account before assigning a job.'),
-                  )
-                else ...[
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey(_staffId ?? ''),
-                    initialValue: _assignableStaff.any((user) => user.id == _staffId) ? _staffId : null,
-                    decoration: const InputDecoration(
-                      labelText: 'Assign staff',
-                      prefixIcon: Icon(Icons.person_outlined, size: 20),
-                    ),
-                    items: [
-                      for (final user in _assignableStaff)
-                        DropdownMenuItem(value: user.id, child: Text(_staffLabel(user))),
+          ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+          children: [
+            _Sheet(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: Text(identity, style: _titleStyle)),
+                      const SizedBox(width: 8),
+                      _TonePill(status: _status),
                     ],
-                    onChanged: (value) => setState(() => _staffId = value),
                   ),
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: _busy || _staffId == null ? null : _assign,
-                    icon: const Icon(Icons.person_add_outlined, size: 20),
-                    label: const Text('Give this job to staff'),
-                  ),
+                  if (service.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(service, style: _bodyStyle),
+                  ],
+                  const SizedBox(height: 8),
+                  Text('₹${booking.price}', style: _titleStyle),
                 ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Row(
-            children: [
-              Icon(Icons.flag_outlined, size: 20, color: AppConstants.accent),
-              SizedBox(width: 8),
-              Text('Status', style: TextStyle(fontWeight: FontWeight.w800, color: AppConstants.ink)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          StatusTree(
-            status: _status,
-            onNext: _busy || nextStatusAfter(_status) == null ? null : () => _setStatus(nextStatusAfter(_status)!),
-          ),
-          if (!_busy && !const {'completed', 'cancelled', 'blocked'}.contains(_status))
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => _setStatus('cancelled'),
-                icon: const Icon(Icons.cancel_outlined, size: 18),
-                label: const Text('Cancel this wash'),
-                style: TextButton.styleFrom(foregroundColor: AppConstants.danger),
               ),
             ),
-          if (_busy)
-            const Padding(
-              padding: EdgeInsets.only(top: 16),
-              child: LinearProgressIndicator(),
+            const SizedBox(height: 12),
+            _Sheet(
+              child: Column(
+                children: [
+                  for (var index = 0; index < facts.length; index++) ...[
+                    if (index > 0) const SizedBox(height: 14),
+                    facts[index],
+                  ],
+                ],
+              ),
             ),
-        ],
+            if (notes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _Sheet(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Notes', style: _titleStyle),
+                    const SizedBox(height: 8),
+                    Text(notes, style: _bodyStyle),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (booking.mobile.isNotEmpty) ...[
+                  _ActionButton(
+                    icon: Icons.phone_outlined,
+                    label: 'Call',
+                    onPressed: () => dialNumber(booking.mobile),
+                  ),
+                  const SizedBox(height: 8),
+                  _ActionButton(
+                    icon: Icons.chat_outlined,
+                    label: 'WhatsApp',
+                    onPressed: _openWhatsApp,
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                _ActionButton(
+                  icon: Icons.currency_rupee_outlined,
+                  label: 'Refund ₹${booking.price}',
+                  onPressed: _busy ? null : _refund,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _Sheet(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const _IconWell(icon: Icons.badge_outlined),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          widget.booking.assignedStaffName.isEmpty
+                              ? 'Assign this client'
+                              : 'Assigned: ${widget.booking.assignedStaffName}',
+                          style: _titleStyle,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_staff.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Text(
+                        'Make a staff account before assigning a job.',
+                        style: _bodyStyle,
+                      ),
+                    )
+                  else ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      key: ValueKey(_staffId ?? ''),
+                      initialValue: _assignableStaff.any((user) => user.id == _staffId) ? _staffId : null,
+                      isExpanded: true,
+                      style: _bodyStyle,
+                      decoration: const InputDecoration(
+                        labelText: 'Assign staff',
+                        labelStyle: _labelStyle,
+                        prefixIcon: Icon(Icons.person_outline, size: 22, color: AppConstants.accent),
+                      ),
+                      items: [
+                        for (final user in _assignableStaff)
+                          DropdownMenuItem(
+                            value: user.id,
+                            child: Text(_staffLabel(user), style: _bodyStyle),
+                          ),
+                      ],
+                      onChanged: (value) => setState(() => _staffId = value),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Assign this wash to a washer. They will see the job.',
+                        style: _mutedBodyStyle,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _busy || _staffId == null ? null : _assign,
+                        icon: const Icon(Icons.person_add_outlined, size: 22),
+                        label: const Text('Assign to washer'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                          shape: const StadiumBorder(),
+                          textStyle: _primaryActionStyle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (booking.beforePhoto.startsWith('data:image') ||
+                booking.afterPhoto.startsWith('data:image')) ...[
+              const SizedBox(height: 12),
+              _Sheet(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Photos', style: _titleStyle),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (booking.beforePhoto.startsWith('data:image'))
+                          Expanded(child: _labeledPhoto(booking.beforePhoto, 'Before')),
+                        if (booking.beforePhoto.startsWith('data:image') &&
+                            booking.afterPhoto.startsWith('data:image'))
+                          const SizedBox(width: 12),
+                        if (booking.afterPhoto.startsWith('data:image'))
+                          Expanded(child: _labeledPhoto(booking.afterPhoto, 'After')),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (booking.reports.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _Sheet(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Customer reports', style: _titleStyle),
+                    for (final report in booking.reports) ...[
+                      const SizedBox(height: 12),
+                      if (report.byName.isNotEmpty)
+                        Text(report.byName, style: _bodyStyle.copyWith(fontWeight: FontWeight.w700)),
+                      if (report.note.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(report.note, style: _bodyStyle),
+                        ),
+                      if (report.image.startsWith('data:image'))
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: _memoryImage(report.image) ?? const SizedBox.shrink(),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            const Text('Status', style: _titleStyle),
+            const SizedBox(height: 12),
+            StatusTree(
+              status: _status,
+              onNext: _busy || nextStatusAfter(_status) == null
+                  ? null
+                  : () => _setStatus(nextStatusAfter(_status)!),
+            ),
+            if (!_busy && !const {'completed', 'cancelled', 'blocked'}.contains(_status)) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _ActionButton(
+                  icon: Icons.cancel_outlined,
+                  label: 'Cancel this wash',
+                  foreground: AppConstants.danger,
+                  onPressed: () => _setStatus('cancelled'),
+                ),
+              ),
+            ],
+            if (_busy)
+              const Padding(
+                padding: EdgeInsets.only(top: 16),
+                child: LinearProgressIndicator(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+const _titleStyle = TextStyle(
+  fontSize: 16,
+  fontWeight: FontWeight.w700,
+  color: AppConstants.ink,
+  height: 1.2,
+);
+
+const _bodyStyle = TextStyle(
+  fontSize: 14,
+  color: AppConstants.ink,
+  height: 1.35,
+);
+
+const _mutedBodyStyle = TextStyle(
+  fontSize: 14,
+  color: AppConstants.muted,
+  height: 1.35,
+);
+
+const _labelStyle = TextStyle(
+  fontSize: 12,
+  color: AppConstants.muted,
+  height: 1.25,
+);
+
+const _actionStyle = TextStyle(
+  fontSize: 14,
+  fontWeight: FontWeight.w700,
+);
+
+const _primaryActionStyle = TextStyle(
+  fontSize: 16,
+  fontWeight: FontWeight.w700,
+);
+
+String _textOrDash(String value) {
+  final text = value.trim();
+  return text.isEmpty ? '—' : text;
+}
+
+String _vehicleValue(BookingRecord booking) {
+  final name = booking.carName.trim();
+  final category = booking.carCategory.trim();
+  if (name.isEmpty && category.isEmpty) return '—';
+  if (name.isEmpty) return category;
+  if (category.isEmpty) return name;
+  return '$name ($category)';
+}
+
+String _addressValue(BookingRecord booking) {
+  final street = booking.address.trim();
+  final city = booking.city.trim();
+  if (street.isEmpty && city.isEmpty) return '—';
+  if (street.isEmpty) return city;
+  if (city.isEmpty) return street;
+  return '$street, $city';
+}
+
+String _paymentValue(BookingRecord booking) {
+  final method = booking.paymentMethod.trim();
+  final status = booking.paymentStatus.trim();
+  if (method.isEmpty && status.isEmpty) return '—';
+  if (method.isEmpty) return status;
+  if (status.isEmpty) return method;
+  return '$method · $status';
+}
+
+String _staffValue(BookingRecord booking) {
+  final name = booking.washerName.trim().isNotEmpty
+      ? booking.washerName.trim()
+      : booking.assignedStaffName.trim();
+  if (name.isEmpty) return 'Not assigned';
+  final phone = booking.washerPhone.trim();
+  if (phone.isEmpty) return name;
+  return '$name · $phone';
+}
+
+class _Sheet extends StatelessWidget {
+  const _Sheet({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppConstants.line),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _IconWell extends StatelessWidget {
+  const _IconWell({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 40,
+      height: 40,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppConstants.iconWell,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(icon, size: 22, color: AppConstants.accent),
+    );
+  }
+}
+
+class _FactRow extends StatelessWidget {
+  const _FactRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _IconWell(icon: icon),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: _labelStyle),
+              const SizedBox(height: 2),
+              Text(value, style: _bodyStyle),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TonePill extends StatelessWidget {
+  const _TonePill({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = statusTone(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: tone.background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        prettyStatus(status),
+        style: TextStyle(
+          color: tone.foreground,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          height: 1.25,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.foreground = AppConstants.accent,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 22),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: foreground,
+        minimumSize: const Size(0, 48),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: const StadiumBorder(),
+        side: BorderSide(color: foreground == AppConstants.accent ? AppConstants.line : foreground),
+        textStyle: _actionStyle,
       ),
     );
   }

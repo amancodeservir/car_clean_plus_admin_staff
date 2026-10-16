@@ -20,6 +20,28 @@ class AdminService {
     return DashboardStats.fromJson(Map<String, dynamic>.from(payload));
   }
 
+  Future<List<LedgerEntry>> transactions(String token) async {
+    final data = await _api.request(
+      method: 'GET',
+      path: AppConstants.transactions,
+      token: token,
+    );
+    return mapList(data['data'], LedgerEntry.fromJson);
+  }
+
+  Future<BookingRecord> booking(String token, String id) async {
+    final data = await _api.request(
+      method: 'GET',
+      path: AppConstants.booking(id),
+      token: token,
+    );
+    final payload = data['data'];
+    if (payload is! Map) {
+      throw ApiException('Booking was empty', 0);
+    }
+    return BookingRecord.fromJson(Map<String, dynamic>.from(payload));
+  }
+
   Future<List<BookingRecord>> bookings(String token, {String query = ''}) async {
     final data = await _api.request(
       method: 'GET',

@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../core/constants.dart';
 import '../providers/auth_provider.dart';
-import '../theme/desk_theme.dart';
 import '../models/models.dart';
 import '../screens/admin_shell.dart';
 import '../screens/booking_detail_screen.dart';
@@ -16,6 +15,7 @@ import '../screens/more_screens.dart';
 import '../screens/role_gates.dart';
 import '../screens/account_screens.dart';
 import '../screens/staff_shell.dart';
+import '../screens/transactions_screen.dart';
 import '../screens/users_screen.dart';
 
 final deskNavigatorKey = GlobalKey<NavigatorState>();
@@ -52,17 +52,15 @@ GoRouter createRouter(AuthProvider auth) {
               children: [
                 Image(
                   image: AssetImage(AppConstants.logo),
-                  height: 64,
+                  height: 120,
                   fit: BoxFit.contain,
                 ),
-                SizedBox(height: 12),
-                BrandMark(),
-                SizedBox(height: 12),
+                SizedBox(height: 16),
                 Text(
-                  'Wash desk',
+                  'Car Clean Plus Staff',
                   style: TextStyle(
                     color: AppConstants.ink,
-                    fontSize: 28,
+                    fontSize: 22,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -96,6 +94,7 @@ GoRouter createRouter(AuthProvider auth) {
       GoRoute(path: '/desk/phone', builder: (context, state) => const PhoneBookingScreen()),
       GoRoute(path: '/desk/block', builder: (context, state) => const BlockSlotScreen()),
       GoRoute(path: '/desk/contacts', builder: (context, state) => const ContactsScreen()),
+      GoRoute(path: '/desk/transactions', builder: (context, state) => const TransactionsScreen()),
       GoRoute(path: '/desk/gallery', builder: (context, state) => const GalleryScreen()),
       GoRoute(path: '/desk/festival', builder: (context, state) => const FestivalScreen()),
       GoRoute(

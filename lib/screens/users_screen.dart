@@ -49,26 +49,33 @@ class _UsersScreenState extends State<UsersScreen> {
       onRefresh: _load,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         itemCount: (_users.isEmpty ? 1 : _users.length) + 1,
         itemBuilder: (context, index) {
           if (index == 0) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 10),
               child: Row(
                 children: [
                   const Expanded(
                     child: Text(
                       'People',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppConstants.ink),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppConstants.ink),
                     ),
                   ),
                   TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppConstants.accent,
+                      backgroundColor: AppConstants.iconWell,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: const StadiumBorder(),
+                      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
                     onPressed: () async {
                       final changed = await context.push<bool>('/desk/tools', extra: 'staff');
                       if (changed == true) _load();
                     },
-                    icon: const Icon(Icons.person_add_outlined, size: 18),
+                    icon: const Icon(Icons.person_add_outlined, size: 16),
                     label: const Text('Add staff'),
                   ),
                 ],
@@ -76,28 +83,45 @@ class _UsersScreenState extends State<UsersScreen> {
             );
           }
           if (_users.isEmpty) {
-            return const DeskEmpty(message: 'No people yet. Add staff to create a washer login.');
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 28),
+              child: Text(
+                'No people yet.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppConstants.muted, fontSize: 14),
+              ),
+            );
           }
           final user = _users[index - 1];
           final title = user.name.isEmpty ? user.email : user.name;
           return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: DeskCard(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _WhiteCard(
               onTap: () async {
                 final changed = await context.push<bool>('/desk/user', extra: user);
                 if (changed == true) _load();
               },
               child: Row(
                 children: [
+                  const IconWell(icon: Icons.person_outlined),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(fontWeight: FontWeight.w500, color: AppConstants.ink),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppConstants.ink),
                         ),
-                        Text(user.email, style: const TextStyle(color: AppConstants.muted, fontSize: 12, fontWeight: FontWeight.w400)),
+                        const SizedBox(height: 2),
+                        Text(
+                          user.email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: AppConstants.muted, fontSize: 12),
+                        ),
                       ],
                     ),
                   ),
@@ -130,8 +154,64 @@ class _RolePill extends StatelessWidget {
         role,
         style: const TextStyle(
           color: AppConstants.accent,
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = statusTone(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: tone.background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        prettyStatus(status),
+        style: TextStyle(
+          color: tone.foreground,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _WhiteCard extends StatelessWidget {
+  const _WhiteCard({required this.child, this.onTap});
+
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppConstants.line),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: child,
+          ),
         ),
       ),
     );
@@ -212,8 +292,8 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                       child: Text(
                         title,
                         style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                           color: AppConstants.ink,
                         ),
                       ),
@@ -239,7 +319,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                   Expanded(
                     child: Text(
                       'Role: $_role\nOnly a superadmin can change roles.',
-                      style: const TextStyle(color: AppConstants.ink, height: 1.4),
+                      style: const TextStyle(color: AppConstants.ink, fontSize: 14, height: 1.4),
                     ),
                   ),
                 ],
@@ -254,7 +334,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                     initialValue: _role,
                     decoration: const InputDecoration(
                       labelText: 'Role',
-                      prefixIcon: Icon(Icons.admin_panel_settings_outlined, size: 20),
+                      prefixIcon: Icon(Icons.admin_panel_settings_outlined, size: 16),
                     ),
                     items: const [
                       DropdownMenuItem(value: 'customer', child: Text('customer')),
@@ -267,30 +347,36 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     'An admin account cannot promote people. This control is only shown for superadmin.',
-                    style: TextStyle(color: AppConstants.muted, height: 1.4),
+                    style: TextStyle(color: AppConstants.muted, fontSize: 12, height: 1.4),
                   ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
                     onPressed: _busy ? null : _save,
-                    icon: Icon(_busy ? Icons.hourglass_bottom_outlined : Icons.save_outlined, size: 20),
+                    icon: Icon(_busy ? Icons.hourglass_bottom_outlined : Icons.save_outlined, size: 16),
                     label: Text(_busy ? 'Saving…' : 'Save role'),
                   ),
                 ],
               ),
             ),
-          const SizedBox(height: 20),
-          const Row(
-            children: [
-              Icon(Icons.history_outlined, size: 20, color: AppConstants.accent),
-              SizedBox(width: 8),
-              Text('Wash history', style: TextStyle(fontWeight: FontWeight.w800, color: AppConstants.ink)),
-            ],
+          const SizedBox(height: 16),
+          const Text(
+            'Wash history',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppConstants.ink),
           ),
           const SizedBox(height: 8),
           if (_historyLoading)
             const LinearProgressIndicator()
           else if (_washes.isEmpty)
-            const DeskEmpty(message: 'No washes yet.')
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'No washes yet.',
+                style: TextStyle(color: AppConstants.muted, fontSize: 14),
+              ),
+            )
           else
             for (final wash in _washes)
               Padding(
@@ -306,25 +392,28 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                           children: [
                             Text(
                               wash.service.isEmpty ? 'Wash' : wash.service,
-                              style: const TextStyle(fontWeight: FontWeight.w800, color: AppConstants.ink),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppConstants.ink),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               '${wash.date} · ${wash.timeSlot}',
-                              style: const TextStyle(color: AppConstants.muted, fontSize: 13),
+                              style: const TextStyle(color: AppConstants.muted, fontSize: 12),
                             ),
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                const Icon(Icons.currency_rupee_outlined, size: 20, color: AppConstants.accent),
+                                const Icon(Icons.currency_rupee_outlined, size: 16, color: AppConstants.accent),
                                 const SizedBox(width: 4),
-                                Text('₹${wash.price}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                Text(
+                                  '₹${wash.price}',
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppConstants.ink),
+                                ),
                               ],
                             ),
                           ],
                         ),
                       ),
-                      StatusPill(status: wash.status),
+                      _StatusPill(status: wash.status),
                     ],
                   ),
                 ),

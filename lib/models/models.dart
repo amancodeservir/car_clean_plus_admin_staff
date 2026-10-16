@@ -38,6 +38,29 @@ class StaffAccount {
   }
 }
 
+class DeskReport {
+  DeskReport({
+    this.note = '',
+    this.image = '',
+    this.at = '',
+    this.byName = '',
+  });
+
+  final String note;
+  final String image;
+  final String at;
+  final String byName;
+
+  factory DeskReport.fromJson(Map<String, dynamic> json) {
+    return DeskReport(
+      note: json['note']?.toString() ?? '',
+      image: json['image']?.toString() ?? '',
+      at: json['at']?.toString() ?? '',
+      byName: json['byName']?.toString() ?? '',
+    );
+  }
+}
+
 class BookingRecord {
   BookingRecord({
     required this.id,
@@ -66,6 +89,11 @@ class BookingRecord {
     this.hasBeforePhoto = false,
     this.hasAfterPhoto = false,
     this.clockedIn = false,
+    this.reports = const [],
+    this.beforePhoto = '',
+    this.afterPhoto = '',
+    this.washerName = '',
+    this.washerPhone = '',
   });
 
   final String id;
@@ -94,6 +122,11 @@ class BookingRecord {
   final bool hasBeforePhoto;
   final bool hasAfterPhoto;
   final bool clockedIn;
+  final List<DeskReport> reports;
+  final String beforePhoto;
+  final String afterPhoto;
+  final String washerName;
+  final String washerPhone;
 
   num get collected => collectedCash + collectedUpi;
   num get due => price - collected < 0 ? 0 : price - collected;
@@ -113,6 +146,12 @@ class BookingRecord {
     final assignedMap = assigned is Map
         ? Map<String, dynamic>.from(assigned)
         : <String, dynamic>{};
+    final beforePhoto = json['beforePhoto']?.toString() ?? '';
+    final afterPhoto = json['afterPhoto']?.toString() ?? '';
+    final assignedName = assignedMap['name']?.toString() ?? '';
+    final assignedPhone = assignedMap['phone']?.toString() ?? '';
+    final washerName = json['washerName']?.toString() ?? '';
+    final washerPhone = json['washerPhone']?.toString() ?? '';
     return BookingRecord(
       id: json['_id']?.toString() ?? '',
       service: json['service']?.toString() ?? '',
@@ -131,17 +170,30 @@ class BookingRecord {
       source: json['bookingSource']?.toString() ?? '',
       createdAt: json['createdAt']?.toString() ?? '',
       assignedStaffId: assignedMap['_id']?.toString() ?? '',
-      assignedStaffName: assignedMap['name']?.toString() ?? '',
+      assignedStaffName: assignedName,
       latitude: location['latitude'] is num ? (location['latitude'] as num).toDouble() : null,
       longitude: location['longitude'] is num ? (location['longitude'] as num).toDouble() : null,
       collectedCash: json['collectedCash'] is num ? json['collectedCash'] as num : num.tryParse('${json['collectedCash']}') ?? 0,
       collectedUpi: json['collectedUpi'] is num ? json['collectedUpi'] as num : num.tryParse('${json['collectedUpi']}') ?? 0,
       paymentStatus: json['paymentStatus']?.toString() ?? '',
-      hasBeforePhoto: (json['beforePhoto']?.toString() ?? '').isNotEmpty,
-      hasAfterPhoto: (json['afterPhoto']?.toString() ?? '').isNotEmpty,
+      hasBeforePhoto: beforePhoto.isNotEmpty,
+      hasAfterPhoto: afterPhoto.isNotEmpty,
       clockedIn: (json['clockedInAt']?.toString() ?? '').isNotEmpty,
+      reports: mapList(json['reports'], DeskReport.fromJson),
+      beforePhoto: beforePhoto,
+      afterPhoto: afterPhoto,
+      washerName: washerName.isNotEmpty ? washerName : assignedName,
+      washerPhone: washerPhone.isNotEmpty ? washerPhone : assignedPhone,
     );
   }
+}
+
+class WeekPoint {
+  const WeekPoint({required this.date, required this.count, required this.revenue});
+
+  final String date;
+  final int count;
+  final num revenue;
 }
 
 class DashboardStats {
@@ -151,6 +203,8 @@ class DashboardStats {
     required this.totalRevenue,
     required this.totalInquiries,
     required this.recentBookings,
+    this.week = const [],
+    this.statusCounts = const {},
   });
 
   final int totalBookings;
@@ -158,9 +212,13 @@ class DashboardStats {
   final num totalRevenue;
   final int totalInquiries;
   final List<BookingRecord> recentBookings;
+  final List<WeekPoint>? week;
+  final Map<String, int>? statusCounts;
 
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
     final recent = json['recentBookings'];
+    final week = json['week'];
+    final counts = json['statusCounts'];
     return DashboardStats(
       totalBookings: _asInt(json['totalBookings']),
       pendingBookings: _asInt(json['pendingBookings']),
@@ -174,6 +232,69 @@ class DashboardStats {
               .map((item) => BookingRecord.fromJson(Map<String, dynamic>.from(item)))
               .toList()
           : const [],
+      week: week is List
+          ? week.whereType<Map>().map((item) {
+              final map = Map<String, dynamic>.from(item);
+              return WeekPoint(
+                date: map['date']?.toString() ?? '',
+                count: _asInt(map['count']),
+                revenue: map['revenue'] is num
+                    ? map['revenue'] as num
+                    : num.tryParse('${map['revenue']}') ?? 0,
+              );
+            }).toList()
+          : const [],
+      statusCounts: counts is Map
+          ? counts.map((key, value) => MapEntry('$key', _asInt(value)))
+          : const {},
+    );
+  }
+}
+
+class LedgerEntry {
+  LedgerEntry({
+    required this.id,
+    required this.bookingId,
+    required this.kind,
+    required this.amount,
+    required this.method,
+    required this.paymentStatus,
+    required this.bookingStatus,
+    required this.customerName,
+    required this.service,
+    required this.date,
+    required this.at,
+  });
+
+  final String id;
+  final String bookingId;
+  final String kind;
+  final num amount;
+  final String method;
+  final String paymentStatus;
+  final String bookingStatus;
+  final String customerName;
+  final String service;
+  final String date;
+  final String at;
+
+  bool get isRefund => kind == 'refund';
+
+  factory LedgerEntry.fromJson(Map<String, dynamic> json) {
+    final amount = json['amount'];
+    final booking = json['booking'];
+    return LedgerEntry(
+      id: json['_id']?.toString() ?? '',
+      bookingId: booking is Map ? booking['_id']?.toString() ?? '' : booking?.toString() ?? '',
+      kind: json['kind']?.toString() ?? 'payment',
+      amount: amount is num ? amount : num.tryParse('$amount') ?? 0,
+      method: json['method']?.toString() ?? '',
+      paymentStatus: json['paymentStatus']?.toString() ?? '',
+      bookingStatus: json['bookingStatus']?.toString() ?? '',
+      customerName: json['customerName']?.toString() ?? '',
+      service: json['service']?.toString() ?? '',
+      date: json['date']?.toString() ?? '',
+      at: json['at']?.toString() ?? '',
     );
   }
 }

@@ -1,0 +1,62 @@
+default_platform(:android)
+
+AAB_PATH = File.expand_path("../build/app/outputs/bundle/release/app-release.aab", __dir__)
+META_PATH = File.expand_path("metadata/android", __dir__)
+
+platform :android do
+  desc "Build release App Bundle (1.0.0 / 13)"
+  lane :build do
+    Dir.chdir(File.expand_path("..", __dir__)) do
+      sh("flutter", "build", "appbundle", "--release", "--build-name=1.0.0", "--build-number=13")
+    end
+  end
+
+  desc "Upload metadata (name, description, logo, feature graphic)"
+  lane :meta do
+    supply(
+      package_name: "com.difmo.carcleanplusstaff",
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_changelogs: true,
+      skip_upload_screenshots: true,
+      skip_upload_images: false,
+      skip_upload_metadata: false,
+      metadata_path: META_PATH,
+    )
+  end
+
+  desc "Build and upload AAB + store listing to Play Console production"
+  lane :release do
+    build
+    UI.user_error!("Missing AAB at #{AAB_PATH}") unless File.exist?(AAB_PATH)
+    supply(
+      package_name: "com.difmo.carcleanplusstaff",
+      aab: AAB_PATH,
+      track: "production",
+      release_status: "draft",
+      skip_upload_apk: true,
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true,
+      metadata_path: META_PATH,
+    )
+  end
+
+  desc "Promote current internal release to production (draft)"
+  lane :promote_production do
+    supply(
+      package_name: "com.difmo.carcleanplusstaff",
+      track: "internal",
+      track_promote_to: "production",
+      track_promote_release_status: "draft",
+      release_status: "draft",
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true,
+    )
+  end
+end

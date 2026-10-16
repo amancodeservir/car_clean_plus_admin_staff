@@ -1,0 +1,10 @@
+Car Clean Plus Staff is the work app for Car Clean Plus crew.
+
+Use it to:
+• See today’s doorstep wash jobs
+• Update job status as you arrive, wash, and finish
+• Capture before and after photos
+• Collect cash or confirm online payment
+• Stay in sync with the desk for slot changes
+
+This app is for Car Clean Plus staff only. Customers should use the Car Clean Plus booking app.

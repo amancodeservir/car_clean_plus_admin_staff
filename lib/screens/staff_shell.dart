@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/constants.dart';
+import '../theme/desk_theme.dart';
 import '../core/screen_guard.dart';
 import '../providers/auth_provider.dart';
 import '../services/admin_service.dart';
@@ -77,19 +78,27 @@ class _StaffShellState extends State<StaffShell> {
       child: InkWell(
         onTap: () => setState(() => _index = index),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Badge(
                 isLabelVisible: badge > 0,
-                label: Text('$badge'),
-                child: Icon(icon, size: 22, color: color),
+                label: Text(
+                  '$badge',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, height: 1.25),
+                ),
+                child: Icon(icon, size: deskIconSize, color: color),
               ),
               const SizedBox(height: 4),
               Text(
                 label,
-                style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 11),
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  height: 1.25,
+                ),
               ),
             ],
           ),

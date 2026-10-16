@@ -3,51 +3,128 @@ import 'package:flutter/material.dart';
 import '../core/constants.dart';
 
 const double deskIconSize = 22;
+const String deskFont = 'PlusJakartaSans';
+
+const TextStyle deskHeadline = TextStyle(
+  fontFamily: deskFont,
+  color: AppConstants.ink,
+  fontSize: 26,
+  fontWeight: FontWeight.w700,
+  height: 1.1,
+  letterSpacing: -0.4,
+);
+
+const TextStyle deskTitle = TextStyle(
+  fontFamily: deskFont,
+  color: AppConstants.ink,
+  fontSize: 16,
+  fontWeight: FontWeight.w700,
+  height: 1.2,
+  letterSpacing: -0.2,
+);
+
+const TextStyle deskRow = TextStyle(
+  fontFamily: deskFont,
+  color: AppConstants.ink,
+  fontSize: 14,
+  fontWeight: FontWeight.w700,
+  height: 1.2,
+);
+
+const TextStyle deskBody = TextStyle(
+  fontFamily: deskFont,
+  color: AppConstants.ink,
+  fontSize: 14,
+  height: 1.35,
+);
+
+const TextStyle deskCaption = TextStyle(
+  fontFamily: deskFont,
+  color: AppConstants.muted,
+  fontSize: 12,
+  height: 1.25,
+);
+
+const TextStyle deskButton = TextStyle(
+  fontFamily: deskFont,
+  fontSize: 16,
+  fontWeight: FontWeight.w700,
+  height: 1.2,
+);
+
+const TextTheme deskText = TextTheme(
+  displayLarge: deskHeadline,
+  displayMedium: deskHeadline,
+  displaySmall: deskHeadline,
+  headlineLarge: deskHeadline,
+  headlineMedium: deskHeadline,
+  headlineSmall: deskTitle,
+  titleLarge: deskTitle,
+  titleMedium: deskTitle,
+  titleSmall: deskRow,
+  bodyLarge: deskBody,
+  bodyMedium: deskBody,
+  bodySmall: deskCaption,
+  labelLarge: deskButton,
+  labelMedium: deskCaption,
+  labelSmall: deskCaption,
+);
 
 class DeskTheme {
   static ThemeData get data {
     final border = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       borderSide: const BorderSide(color: AppConstants.line),
     );
     return ThemeData(
       useMaterial3: true,
+      fontFamily: deskFont,
       scaffoldBackgroundColor: AppConstants.paper,
+      textTheme: deskText,
+      primaryTextTheme: deskText,
       colorScheme: const ColorScheme.light(
         primary: AppConstants.accent,
         onPrimary: Colors.white,
         secondary: AppConstants.accent,
         onSecondary: Colors.white,
-        surface: Colors.white,
+        surface: AppConstants.card,
         onSurface: AppConstants.ink,
         error: AppConstants.danger,
       ),
-      iconTheme: const IconThemeData(color: AppConstants.ink, size: deskIconSize),
+      iconTheme: const IconThemeData(color: AppConstants.accent, size: deskIconSize),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppConstants.paper,
         foregroundColor: AppConstants.ink,
+        surfaceTintColor: AppConstants.paper,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: TextStyle(
-          color: AppConstants.ink,
-          fontSize: 17,
-          fontWeight: FontWeight.w500,
-          letterSpacing: -0.2,
-        ),
+        iconTheme: IconThemeData(color: AppConstants.ink, size: deskIconSize),
+        titleTextStyle: deskTitle,
       ),
-      cardTheme: CardThemeData(
-        color: Colors.white,
+      cardTheme: const CardThemeData(
+        color: AppConstants.card,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppConstants.line),
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+          side: BorderSide(color: AppConstants.line),
         ),
       ),
-      dialogTheme: DialogThemeData(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: AppConstants.card,
+        titleTextStyle: deskTitle,
+        contentTextStyle: deskBody,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+          side: BorderSide(color: AppConstants.line),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppConstants.ink,
+        contentTextStyle: deskBody.copyWith(color: Colors.white),
+        behavior: SnackBarBehavior.floating,
+        shape: const StadiumBorder(),
       ),
       dividerTheme: const DividerThemeData(color: AppConstants.line, thickness: 1),
       filledButtonTheme: FilledButtonThemeData(
@@ -59,22 +136,22 @@ class DeskTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           shape: const StadiumBorder(),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          textStyle: deskButton,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppConstants.accent,
           side: const BorderSide(color: AppConstants.line),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           shape: const StadiumBorder(),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: deskButton,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppConstants.accent,
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          textStyle: deskButton,
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
@@ -87,13 +164,13 @@ class DeskTheme {
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        labelStyle: const TextStyle(color: AppConstants.muted),
-        hintStyle: const TextStyle(color: AppConstants.muted),
+        labelStyle: deskCaption,
+        hintStyle: deskCaption,
         prefixIconColor: AppConstants.accent,
         border: border,
         enabledBorder: border,
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppConstants.accent, width: 1.5),
         ),
       ),
@@ -129,9 +206,9 @@ class DeskTheme {
           }),
           side: const WidgetStatePropertyAll(BorderSide(color: AppConstants.line)),
           shape: const WidgetStatePropertyAll(StadiumBorder()),
-          iconSize: const WidgetStatePropertyAll(20),
+          iconSize: const WidgetStatePropertyAll(deskIconSize),
           textStyle: const WidgetStatePropertyAll(
-            TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            TextStyle(fontWeight: FontWeight.w700, fontSize: 12, height: 1.25),
           ),
         ),
       ),
@@ -157,6 +234,9 @@ class DeskTheme {
       listTileTheme: const ListTileThemeData(
         iconColor: AppConstants.accent,
         textColor: AppConstants.ink,
+        titleTextStyle: deskRow,
+        subtitleTextStyle: deskCaption,
+        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       ),
     );
   }
@@ -187,14 +267,14 @@ class IconWell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 36,
-      height: 36,
+      width: 40,
+      height: 40,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: AppConstants.iconWell,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(icon, size: 20, color: iconColor ?? AppConstants.accent),
+      child: Icon(icon, size: deskIconSize, color: iconColor ?? AppConstants.accent),
     );
   }
 }
@@ -239,7 +319,7 @@ class DeskCard extends StatelessWidget {
   const DeskCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    this.padding = const EdgeInsets.all(14),
     this.onTap,
     this.margin = EdgeInsets.zero,
   });
@@ -254,13 +334,13 @@ class DeskCard extends StatelessWidget {
     return Container(
       margin: margin,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        color: AppConstants.card,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppConstants.line),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -289,8 +369,9 @@ class StatusPill extends StatelessWidget {
         prettyStatus(status),
         style: TextStyle(
           color: tone.foreground,
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
+          height: 1.25,
         ),
       ),
     );
@@ -310,12 +391,12 @@ class MetaRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: AppConstants.accent),
+          Icon(icon, size: deskIconSize, color: AppConstants.accent),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text.isEmpty ? '—' : text,
-              style: const TextStyle(color: AppConstants.ink, fontSize: 14, height: 1.35),
+              style: deskBody,
             ),
           ),
         ],
@@ -345,19 +426,15 @@ class DeskAction extends StatelessWidget {
       child: InkWell(
         onTap: onPressed,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 20, color: AppConstants.accent),
-              const SizedBox(width: 6),
+              Icon(icon, size: deskIconSize, color: AppConstants.accent),
+              const SizedBox(width: 8),
               Text(
                 label,
-                style: const TextStyle(
-                  color: AppConstants.ink,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: deskRow,
               ),
             ],
           ),
@@ -391,7 +468,7 @@ class DeskEmpty extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppConstants.muted, height: 1.4),
+            style: deskBody.copyWith(color: AppConstants.muted),
           ),
         ],
       ),
@@ -512,7 +589,7 @@ class StatusTree extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             prettyStatus(status),
-            style: const TextStyle(fontWeight: FontWeight.w800, color: AppConstants.danger),
+            style: deskRow.copyWith(color: AppConstants.danger),
           ),
         ],
       );
@@ -595,8 +672,7 @@ class _StatusNode extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
-                    fontWeight: here || done ? FontWeight.w800 : FontWeight.w600,
+                  style: (here || done ? deskRow : deskBody).copyWith(
                     color: here || done ? AppConstants.ink : AppConstants.muted,
                   ),
                 ),
@@ -612,7 +688,7 @@ class _StatusNode extends StatelessWidget {
                       onPressed: onAction,
                       icon: Icon(
                         onAction == null ? Icons.lock_outlined : Icons.arrow_forward_outlined,
-                        size: 18,
+                        size: deskIconSize,
                       ),
                       label: Text(action!),
                       style: TextButton.styleFrom(

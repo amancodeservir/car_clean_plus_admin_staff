@@ -36,21 +36,41 @@ class DeskToolTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DeskCard(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: Row(
-        children: [
-          IconWell(icon: iconFor(label)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700, color: AppConstants.ink),
+    final radius = BorderRadius.circular(16);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 72),
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: const BorderSide(color: AppConstants.line, width: 1),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Row(
+              children: [
+                _IconBox(icon: iconFor(label)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: _rowTitle,
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_outlined,
+                  size: 22,
+                  color: AppConstants.muted,
+                ),
+              ],
             ),
           ),
-          const Icon(Icons.chevron_right_outlined, size: 20, color: AppConstants.muted),
-        ],
+        ),
       ),
     );
   }
@@ -99,7 +119,7 @@ class _DeskHub extends StatelessWidget {
               label: link.$1,
               onTap: () => context.push('/desk/tools', extra: link.$2),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
           ],
         ],
       ),
@@ -112,21 +132,45 @@ class _PriceRow {
     required this.category,
     required this.service,
     required this.amount,
+    this.active = true,
   });
 
   final String category;
   final String service;
   String amount;
+  bool active;
 
   bool get isBike => category.toLowerCase() == 'bike';
 }
 
 class _AddonRow {
-  _AddonRow({required this.name, required this.amount});
+  _AddonRow({required this.name, required this.amount, this.active = true});
 
   final String name;
   String amount;
+  bool active;
 }
+
+class _CatalogField {
+  _CatalogField({
+    required this.name,
+    required this.label,
+    required this.amount,
+  });
+
+  final String name;
+  final String label;
+  String amount;
+}
+
+const _catalogControlFields = <(String, String)>[
+  ('slotCapacity', 'Washes per slot'),
+  ('freeRadiusKm', 'Free radius km'),
+  ('zoneKm', 'Zone km'),
+  ('travelFee', 'Travel fee'),
+  ('staffPayPerJob', 'Washer pay per job'),
+  ('gstPercent', 'GST percent'),
+];
 
 class _PricesScreen extends StatefulWidget {
   const _PricesScreen();
@@ -138,6 +182,7 @@ class _PricesScreen extends StatefulWidget {
 class _PricesScreenState extends State<_PricesScreen> {
   List<_PriceRow> _rows = [];
   List<_AddonRow> _addons = [];
+  List<_CatalogField> _controls = [];
   bool _sendAddons = false;
   bool _loading = true;
   bool _busy = false;
@@ -161,6 +206,7 @@ class _PricesScreenState extends State<_PricesScreen> {
     final payload = data == null ? null : data['data'];
     final rows = <_PriceRow>[];
     final addons = <_AddonRow>[];
+    final controls = <_CatalogField>[];
     var sendAddons = false;
     String? note;
     if (payload is Map) {
@@ -174,6 +220,7 @@ class _PricesScreenState extends State<_PricesScreen> {
               category: row['category']?.toString() ?? '',
               service: row['service']?.toString() ?? '',
               amount: _plainNumber(row['amount']),
+              active: row['active'] != false,
             ),
           );
         }
@@ -187,22 +234,57 @@ class _PricesScreenState extends State<_PricesScreen> {
             _AddonRow(
               name: row['name']?.toString() ?? '',
               amount: _plainNumber(row['amount']),
+              active: row['active'] != false,
             ),
           );
         }
       }
+      for (final field in _catalogControlFields) {
+        if (!map.containsKey(field.$1)) continue;
+        controls.add(
+          _CatalogField(
+            name: field.$1,
+            label: field.$2,
+            amount: _plainNumber(map[field.$1]),
+          ),
+        );
+      }
       final festival = map['festival'];
       if (festival is Map && festival['isOfferActive'] == true) {
-        note = 'Festival pricing is on. Saving writes these amounts into the catalog.';
+        note =
+            'Festival pricing is on. Saving writes these amounts into the catalog.';
       }
     }
     setState(() {
       _rows = rows;
       _addons = addons;
+      _controls = controls;
       _sendAddons = sendAddons;
       _note = note;
       _generation += 1;
       _loading = false;
+    });
+  }
+
+  List<String> get _serviceNames {
+    final names = <String>[];
+    for (final row in _rows) {
+      if (row.service.isEmpty || names.contains(row.service)) continue;
+      names.add(row.service);
+    }
+    return names;
+  }
+
+  bool _serviceActive(String service) {
+    final matches = _rows.where((row) => row.service == service);
+    return matches.isNotEmpty && matches.every((row) => row.active);
+  }
+
+  void _setServiceActive(String service, bool active) {
+    setState(() {
+      for (final row in _rows) {
+        if (row.service == service) row.active = active;
+      }
     });
   }
 
@@ -216,6 +298,7 @@ class _PricesScreenState extends State<_PricesScreen> {
             'category': row.category,
             'service': row.service,
             'amount': num.tryParse(row.amount) ?? 0,
+            'active': row.active,
           },
       ],
       if (_sendAddons)
@@ -224,8 +307,11 @@ class _PricesScreenState extends State<_PricesScreen> {
             {
               'name': addon.name,
               'amount': num.tryParse(addon.amount) ?? 0,
+              'active': addon.active,
             },
         ],
+      for (final field in _controls)
+        field.name: num.tryParse(field.amount) ?? 0,
     };
     final ok = await runOk(
       context,
@@ -234,9 +320,9 @@ class _PricesScreenState extends State<_PricesScreen> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Prices saved')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Prices saved')));
     }
   }
 
@@ -247,64 +333,91 @@ class _PricesScreenState extends State<_PricesScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _rows.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  children: const [
-                    DeskEmpty(message: 'No prices in the catalog.'),
-                  ],
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    if (_note != null) ...[
-                      DeskCard(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.info_outlined, size: 20, color: AppConstants.accent),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text(_note!)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    const Row(
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              children: const [DeskEmpty(message: 'No prices in the catalog.')],
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (_note != null) ...[
+                  _Panel(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.directions_car_outlined, size: 20, color: AppConstants.accent),
-                        SizedBox(width: 8),
-                        Text(
-                          'Car and bike',
-                          style: TextStyle(fontWeight: FontWeight.w800, color: AppConstants.ink),
-                        ),
+                        const _IconBox(icon: Icons.info_outlined),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(_note!, style: _body)),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    _PriceTable(rows: _rows, generation: _generation),
-                    if (_sendAddons) ...[
-                      const SizedBox(height: 20),
-                      const Row(
-                        children: [
-                          Icon(Icons.add_outlined, size: 20, color: AppConstants.accent),
-                          SizedBox(width: 8),
-                          Text(
-                            'Add-ons',
-                            style: TextStyle(fontWeight: FontWeight.w800, color: AppConstants.ink),
-                          ),
-                        ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (_controls.isNotEmpty) ...[
+                  const _SectionTitle('Catalog'),
+                  for (final field in _controls) ...[
+                    TextFormField(
+                      key: ValueKey('$_generation|${field.name}'),
+                      initialValue: field.amount,
+                      style: _input,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                      const SizedBox(height: 8),
-                      _AddonTable(addons: _addons, generation: _generation),
-                    ],
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: _busy ? null : _save,
-                      icon: Icon(_busy ? Icons.hourglass_bottom_outlined : Icons.save_outlined, size: 20),
-                      label: Text(_busy ? 'Saving…' : 'Save prices'),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      ],
+                      decoration: _field(field.label),
+                      onChanged: (value) => field.amount = value,
                     ),
+                    const SizedBox(height: 12),
                   ],
+                ],
+                if (_serviceNames.isNotEmpty) ...[
+                  const _SectionTitle('Services'),
+                  for (final service in _serviceNames) ...[
+                    _Panel(
+                      padding: EdgeInsets.zero,
+                      child: SwitchListTile(
+                        contentPadding: const EdgeInsets.fromLTRB(14, 6, 8, 6),
+                        secondary: const _IconBox(
+                          icon: Icons.visibility_outlined,
+                        ),
+                        title: Text(service, style: _rowTitle),
+                        subtitle: Text(
+                          _serviceActive(service)
+                              ? 'Customers can book this'
+                              : 'Hidden from customers',
+                          style: _caption,
+                        ),
+                        value: _serviceActive(service),
+                        onChanged: (value) => _setServiceActive(service, value),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  const SizedBox(height: 8),
+                ],
+                const _SectionTitle('Car and bike'),
+                _PriceTable(rows: _rows, generation: _generation),
+                if (_sendAddons) ...[
+                  const SizedBox(height: 16),
+                  const _SectionTitle('Add-ons'),
+                  _AddonTable(addons: _addons, generation: _generation),
+                ],
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: _busy ? null : _save,
+                  icon: Icon(
+                    _busy
+                        ? Icons.hourglass_bottom_outlined
+                        : Icons.save_outlined,
+                    size: 20,
+                  ),
+                  label: Text(_busy ? 'Saving…' : 'Save prices'),
                 ),
+              ],
+            ),
     );
   }
 }
@@ -326,26 +439,26 @@ class _PriceTable extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Column(
-        children: [
-          const _TableHead(
-            labels: ['Vehicle', 'Category', 'Service', '₹'],
-            flexes: [2, 3, 3, 2],
-          ),
-          for (final row in rows)
-            _TableLine(
-              accent: row.isBike,
-              children: [
-                Text(row.isBike ? 'Bike' : 'Car'),
-                Text(row.category),
-                Text(row.service),
-                _AmountField(
-                  key: ValueKey('$generation|${row.category}|${row.service}'),
-                  initial: row.amount,
-                  onChanged: (value) => row.amount = value,
-                ),
-              ],
+          children: [
+            const _TableHead(
+              labels: ['Vehicle', 'Category', 'Service', '₹'],
+              flexes: [2, 3, 3, 2],
             ),
-        ],
+            for (final row in rows)
+              _TableLine(
+                accent: row.isBike,
+                children: [
+                  Text(row.isBike ? 'Bike' : 'Car', style: _body),
+                  Text(row.category, style: _body),
+                  Text(row.service, style: _body),
+                  _AmountField(
+                    key: ValueKey('$generation|${row.category}|${row.service}'),
+                    initial: row.amount,
+                    onChanged: (value) => row.amount = value,
+                  ),
+                ],
+              ),
+          ],
         ),
       ),
     );
@@ -369,21 +482,21 @@ class _AddonTable extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Column(
-        children: [
-          const _TableHead(labels: ['Add-on', '₹'], flexes: [3, 2]),
-          for (final addon in addons)
-            _TableLine(
-              cells: const [3, 2],
-              children: [
-                Text(addon.name),
-                _AmountField(
-                  key: ValueKey('$generation|addon|${addon.name}'),
-                  initial: addon.amount,
-                  onChanged: (value) => addon.amount = value,
-                ),
-              ],
-            ),
-        ],
+          children: [
+            const _TableHead(labels: ['Add-on', '₹'], flexes: [3, 2]),
+            for (final addon in addons)
+              _TableLine(
+                cells: const [3, 2],
+                children: [
+                  Text(addon.name, style: _body),
+                  _AmountField(
+                    key: ValueKey('$generation|addon|${addon.name}'),
+                    initial: addon.amount,
+                    onChanged: (value) => addon.amount = value,
+                  ),
+                ],
+              ),
+          ],
         ),
       ),
     );
@@ -401,7 +514,7 @@ class _TableHead extends StatelessWidget {
     return ColoredBox(
       color: AppConstants.iconWell,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         child: Row(
           children: [
             const SizedBox(width: 6),
@@ -410,11 +523,7 @@ class _TableHead extends StatelessWidget {
                 flex: index < flexes.length ? flexes[index] : 1,
                 child: Text(
                   labels[index],
-                  style: const TextStyle(
-                    color: AppConstants.ink,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: _caption.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
           ],
@@ -443,16 +552,18 @@ class _TableLine extends StatelessWidget {
         border: Border(top: BorderSide(color: AppConstants.line)),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         child: Row(
           children: [
             if (cells.length == 4) ...[
               Icon(
-                accent ? Icons.two_wheeler_outlined : Icons.directions_car_outlined,
-                size: 20,
+                accent
+                    ? Icons.two_wheeler_outlined
+                    : Icons.directions_car_outlined,
+                size: 22,
                 color: AppConstants.accent,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
             ],
             for (var index = 0; index < children.length; index++)
               Expanded(
@@ -467,7 +578,11 @@ class _TableLine extends StatelessWidget {
 }
 
 class _AmountField extends StatelessWidget {
-  const _AmountField({super.key, required this.initial, required this.onChanged});
+  const _AmountField({
+    super.key,
+    required this.initial,
+    required this.onChanged,
+  });
 
   final String initial;
   final ValueChanged<String> onChanged;
@@ -479,6 +594,7 @@ class _AmountField extends StatelessWidget {
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
       textAlign: TextAlign.right,
+      style: _amount,
       decoration: InputDecoration(
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -524,9 +640,9 @@ class _DailyReportScreenState extends State<_DailyReportScreen> {
     final data = await runGuarded(
       context,
       context.read<AdminService>().getMap(
-            token,
-            '${AppConstants.dailyReport}?date=${formatYmd(_date)}',
-          ),
+        token,
+        '${AppConstants.dailyReport}?date=${formatYmd(_date)}',
+      ),
     );
     if (!mounted) return;
     final payload = data == null ? null : data['data'];
@@ -583,25 +699,14 @@ class _DailyReportScreenState extends State<_DailyReportScreen> {
                   for (final line in lines)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: DeskCard(
+                      child: _Panel(
                         child: Row(
                           children: [
-                            IconWell(icon: _reportIcon(line.$1)),
+                            _IconBox(icon: _reportIcon(line.$1)),
                             const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                line.$1,
-                                style: const TextStyle(fontWeight: FontWeight.w800, color: AppConstants.ink),
-                              ),
-                            ),
-                            Text(
-                              line.$2,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                color: AppConstants.ink,
-                              ),
-                            ),
+                            Expanded(child: Text(line.$1, style: _rowTitle)),
+                            const SizedBox(width: 8),
+                            Text(line.$2, style: _amount),
                           ],
                         ),
                       ),
@@ -666,9 +771,9 @@ class _CreateStaffScreenState extends State<_CreateStaffScreen> {
     _phone.clear();
     _password.clear();
     _branch.clear();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Staff login created')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Staff login created')));
     if (context.canPop()) context.pop(true);
   }
 
@@ -681,35 +786,45 @@ class _CreateStaffScreenState extends State<_CreateStaffScreen> {
         children: [
           TextField(
             controller: _name,
+            style: _input,
             decoration: _field('Name', icon: Icons.person_outlined),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _email,
+            style: _input,
             keyboardType: TextInputType.emailAddress,
             decoration: _field('Email', icon: Icons.email_outlined),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _phone,
+            style: _input,
             keyboardType: TextInputType.phone,
             decoration: _field('Phone', icon: Icons.phone_outlined),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _password,
+            style: _input,
             obscureText: true,
             decoration: _field('Password', icon: Icons.lock_outlined),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _branch,
+            style: _input,
             decoration: _field('Branch', icon: Icons.store_outlined),
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _busy ? null : _save,
-            icon: Icon(_busy ? Icons.hourglass_bottom_outlined : Icons.person_add_outlined, size: 20),
+            icon: Icon(
+              _busy
+                  ? Icons.hourglass_bottom_outlined
+                  : Icons.person_add_outlined,
+              size: 20,
+            ),
             label: Text(_busy ? 'Saving…' : 'Create staff'),
           ),
         ],
@@ -792,17 +907,22 @@ class _BranchesScreenState extends State<_BranchesScreen> {
         children: [
           TextField(
             controller: _name,
+            style: _input,
             decoration: _field('Name', icon: Icons.store_outlined),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _city,
+            style: _input,
             decoration: _field('City', icon: Icons.location_city_outlined),
           ),
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: _busy ? null : _save,
-            icon: Icon(_busy ? Icons.hourglass_bottom_outlined : Icons.add_outlined, size: 20),
+            icon: Icon(
+              _busy ? Icons.hourglass_bottom_outlined : Icons.add_outlined,
+              size: 20,
+            ),
             label: Text(_busy ? 'Saving…' : 'Add branch'),
           ),
           const SizedBox(height: 16),
@@ -814,15 +934,29 @@ class _BranchesScreenState extends State<_BranchesScreen> {
             for (final row in _rows)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: DeskCard(
+                child: _Panel(
                   child: Row(
                     children: [
-                      const IconWell(icon: Icons.store_outlined),
+                      const _IconBox(icon: Icons.store_outlined),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          '${row['name'] ?? ''} · ${row['city'] ?? ''}',
-                          style: const TextStyle(fontWeight: FontWeight.w800, color: AppConstants.ink),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${row['name'] ?? ''}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: _rowTitle,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${row['city'] ?? ''}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: _caption,
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -879,9 +1013,9 @@ class _PromosScreenState extends State<_PromosScreen> {
 
   Future<void> _save() async {
     if (_code.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Code is required')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Code is required')));
       return;
     }
     setState(() => _busy = true);
@@ -911,16 +1045,24 @@ class _PromosScreenState extends State<_PromosScreen> {
         children: [
           TextField(
             controller: _code,
+            style: _input,
             decoration: _field('Code', icon: Icons.local_offer_outlined),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             key: ValueKey(_kind),
             initialValue: _kind,
+            style: _input,
             decoration: _field('Kind', icon: Icons.category_outlined),
             items: const [
-              DropdownMenuItem(value: 'percent', child: Text('percent')),
-              DropdownMenuItem(value: 'flat', child: Text('flat')),
+              DropdownMenuItem(
+                value: 'percent',
+                child: Text('percent', style: _input),
+              ),
+              DropdownMenuItem(
+                value: 'flat',
+                child: Text('flat', style: _input),
+              ),
             ],
             onChanged: (value) {
               if (value == null) return;
@@ -930,13 +1072,17 @@ class _PromosScreenState extends State<_PromosScreen> {
           const SizedBox(height: 12),
           TextField(
             controller: _value,
+            style: _input,
             keyboardType: TextInputType.number,
             decoration: _field('Value', icon: Icons.currency_rupee_outlined),
           ),
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: _busy ? null : _save,
-            icon: Icon(_busy ? Icons.hourglass_bottom_outlined : Icons.add_outlined, size: 20),
+            icon: Icon(
+              _busy ? Icons.hourglass_bottom_outlined : Icons.add_outlined,
+              size: 20,
+            ),
             label: Text(_busy ? 'Saving…' : 'Add promo'),
           ),
           const SizedBox(height: 16),
@@ -948,17 +1094,28 @@ class _PromosScreenState extends State<_PromosScreen> {
             for (final row in _rows)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: DeskCard(
+                child: _Panel(
                   child: Row(
                     children: [
-                      const IconWell(icon: Icons.local_offer_outlined),
+                      const _IconBox(icon: Icons.local_offer_outlined),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          '${row['code'] ?? ''} · ${row['kind'] ?? 'flat'} · ${_plainNumber(row['value'])}',
-                          style: const TextStyle(fontWeight: FontWeight.w800, color: AppConstants.ink),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${row['code'] ?? ''}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: _rowTitle,
+                            ),
+                            const SizedBox(height: 2),
+                            Text('${row['kind'] ?? 'flat'}', style: _caption),
+                          ],
                         ),
                       ),
+                      const SizedBox(width: 8),
+                      Text(_plainNumber(row['value']), style: _amount),
                     ],
                   ),
                 ),
@@ -1025,9 +1182,7 @@ class _PayrollScreenState extends State<_PayrollScreen> {
                   ? ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(16),
-                      children: const [
-                        DeskEmpty(message: 'No payouts yet.'),
-                      ],
+                      children: const [DeskEmpty(message: 'No payouts yet.')],
                     )
                   : ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -1041,8 +1196,8 @@ class _PayrollScreenState extends State<_PayrollScreen> {
                         final booking = row['booking'];
                         final name = staff is Map
                             ? (staff['name']?.toString().isNotEmpty == true
-                                ? staff['name'].toString()
-                                : 'Staff')
+                                  ? staff['name'].toString()
+                                  : 'Staff')
                             : 'Staff';
                         final detail = booking is Map
                             ? [
@@ -1052,69 +1207,79 @@ class _PayrollScreenState extends State<_PayrollScreen> {
                             : '';
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: DeskCard(
-                          child: Row(
-                            children: [
-                              const IconWell(icon: Icons.account_balance_wallet_outlined),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppConstants.ink),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.currency_rupee_outlined,
-                                          size: 20,
-                                          color: AppConstants.accent,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            '${_plainNumber(row['amount'])}${detail.isEmpty ? '' : ' · $detail'}',
-                                          ),
+                          child: _Panel(
+                            child: Row(
+                              children: [
+                                const _IconBox(
+                                  icon: Icons.account_balance_wallet_outlined,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: _rowTitle,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '₹${_plainNumber(row['amount'])}',
+                                        style: _amount,
+                                      ),
+                                      if (detail.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          detail,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: _caption,
                                         ),
                                       ],
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              if (paid)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: AppConstants.completedBg,
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: const Text(
-                                    'Paid',
-                                    style: TextStyle(
-                                      color: AppConstants.completed,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
+                                const SizedBox(width: 8),
+                                if (paid)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppConstants.completedBg,
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: const Text(
+                                      'Paid',
+                                      style: TextStyle(
+                                        color: AppConstants.completed,
+                                        fontSize: 12,
+                                        height: 1.2,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  FilledButton.icon(
+                                    onPressed: id.isEmpty || _payingId == id
+                                        ? null
+                                        : () => _markPaid(id),
+                                    icon: Icon(
+                                      _payingId == id
+                                          ? Icons.hourglass_bottom_outlined
+                                          : Icons.check_circle_outlined,
+                                      size: 20,
+                                    ),
+                                    label: Text(
+                                      _payingId == id ? '…' : 'Mark paid',
                                     ),
                                   ),
-                                )
-                              else
-                                FilledButton.icon(
-                                  onPressed: id.isEmpty || _payingId == id
-                                      ? null
-                                      : () => _markPaid(id),
-                                  icon: Icon(
-                                    _payingId == id
-                                        ? Icons.hourglass_bottom_outlined
-                                        : Icons.check_circle_outlined,
-                                    size: 20,
-                                  ),
-                                  label: Text(_payingId == id ? '…' : 'Mark paid'),
-                                ),
-                            ],
-                          ),
+                              ],
+                            ),
                           ),
                         );
                       },
@@ -1127,8 +1292,103 @@ class _PayrollScreenState extends State<_PayrollScreen> {
 InputDecoration _field(String label, {IconData? icon}) {
   return InputDecoration(
     labelText: label,
-    prefixIcon: icon == null ? null : Icon(icon, size: 20),
+    labelStyle: _caption,
+    floatingLabelStyle: _caption,
+    prefixIcon: icon == null
+        ? null
+        : Icon(icon, size: 22, color: AppConstants.accent),
   );
+}
+
+const _section = TextStyle(
+  fontSize: 16,
+  height: 1.2,
+  fontWeight: FontWeight.w700,
+  color: AppConstants.ink,
+);
+
+const _rowTitle = TextStyle(
+  fontSize: 14,
+  height: 1.2,
+  fontWeight: FontWeight.w700,
+  color: AppConstants.ink,
+);
+
+const _body = TextStyle(fontSize: 14, height: 1.35, color: AppConstants.ink);
+
+const _input = TextStyle(fontSize: 14, color: AppConstants.ink);
+
+const _amount = TextStyle(
+  fontSize: 14,
+  fontWeight: FontWeight.w700,
+  color: AppConstants.ink,
+);
+
+const _caption = TextStyle(
+  fontSize: 12,
+  height: 1.25,
+  color: AppConstants.muted,
+);
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(label, style: _section),
+    );
+  }
+}
+
+class _IconBox extends StatelessWidget {
+  const _IconBox({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppConstants.iconWell,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(icon, size: 22, color: AppConstants.accent),
+    );
+  }
+}
+
+class _Panel extends StatelessWidget {
+  const _Panel({
+    required this.child,
+    this.padding = const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+  });
+
+  final Widget child;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppConstants.line, width: 1),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(padding: padding, child: child),
+      ),
+    );
+  }
 }
 
 IconData _reportIcon(String label) {

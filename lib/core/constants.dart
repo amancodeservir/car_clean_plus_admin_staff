@@ -9,6 +9,7 @@ class AppConstants {
   static const String login = '/auth/login';
   static const String me = '/auth/me';
   static const String dashboard = '/admin/dashboard';
+  static const String transactions = '/admin/transactions';
   static const String bookings = '/admin/bookings';
   static const String manualBooking = '/admin/bookings/manual';
   static const String users = '/admin/users';

@@ -1,4 +1,4 @@
-package com.difmo.car_clean_admin
+package com.difmo.carcleanplusstaff
 
 import io.flutter.embedding.android.FlutterActivity
 
