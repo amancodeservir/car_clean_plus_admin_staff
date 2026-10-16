@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/constants.dart';
@@ -42,11 +43,69 @@ class _PhoneBookingScreenState extends State<PhoneBookingScreen> {
   final _price = TextEditingController();
   final _notes = TextEditingController();
   String _category = 'Standard';
-  String _service = 'Doorstep Car Wash';
+  String _service = AppConstants.services.first;
   String _slot = AppConstants.timeSlots.first;
   String _payment = 'Cash';
   DateTime _date = DateTime.now();
   bool _busy = false;
+  bool _alreadyPaid = false;
+  List<String> _services = AppConstants.services;
+  List<String> _categories = AppConstants.carCategories;
+  // True once the desk types a price, so a new quote never overwrites it.
+  bool _priceTyped = false;
+  bool _quoting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCatalog();
+  }
+
+  Future<void> _loadCatalog() async {
+    final token = context.read<AuthProvider>().token;
+    try {
+      final data = await context.read<AdminService>().getMap(token, AppConstants.catalog);
+      final payload = data['data'];
+      if (payload is! Map) return;
+      final rows = payload['basePrices'] is List ? payload['basePrices'] as List : const [];
+      final live = rows.whereType<Map>().where((row) => row['active'] != false);
+      final services = <String>[];
+      final categories = <String>[];
+      for (final row in live) {
+        final service = row['service']?.toString() ?? '';
+        final category = row['category']?.toString() ?? '';
+        if (service.isNotEmpty && !services.contains(service)) services.add(service);
+        if (category.isNotEmpty && !categories.contains(category)) categories.add(category);
+      }
+      if (!mounted || services.isEmpty || categories.isEmpty) return;
+      setState(() {
+        _services = services;
+        _categories = categories;
+        if (!_services.contains(_service)) _service = _services.first;
+        if (!_categories.contains(_category)) _category = _categories.first;
+      });
+    } catch (_) {
+      // Keep the built-in lists; the server still checks the booking.
+    }
+    if (mounted) _quote();
+  }
+
+  Future<void> _quote() async {
+    if (_priceTyped) return;
+    setState(() => _quoting = true);
+    final token = context.read<AuthProvider>().token;
+    final total = await context.read<AdminService>().quote(
+          token,
+          category: _category,
+          service: _service,
+          city: _city.text.trim().isEmpty ? 'Lucknow' : _city.text.trim(),
+        );
+    if (!mounted) return;
+    setState(() {
+      _quoting = false;
+      if (!_priceTyped) _price.text = total == null ? '' : '${total.round()}';
+    });
+  }
 
   @override
   void dispose() {
@@ -63,18 +122,30 @@ class _PhoneBookingScreenState extends State<PhoneBookingScreen> {
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      firstDate: DateUtils.dateOnly(DateTime.now()),
       lastDate: DateTime.now().add(const Duration(days: 60)),
       initialDate: _date,
     );
     if (picked != null) setState(() => _date = picked);
   }
 
+  void _say(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _save() async {
-    if (_name.text.trim().isEmpty || _mobile.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name and mobile are required')),
-      );
+    final digits = _mobile.text.replaceAll(RegExp(r'\D'), '');
+    if (_name.text.trim().isEmpty) {
+      _say('Customer name is required');
+      return;
+    }
+    if (digits.length < 10) {
+      _say('Mobile needs 10 digits');
+      return;
+    }
+    final price = num.tryParse(_price.text.trim());
+    if (_price.text.trim().isNotEmpty && (price == null || price <= 0)) {
+      _say('Price must be more than zero');
       return;
     }
     setState(() => _busy = true);
@@ -91,8 +162,9 @@ class _PhoneBookingScreenState extends State<PhoneBookingScreen> {
         'city': _city.text.trim(),
         'date': formatYmd(_date),
         'timeSlot': _slot,
-        'finalPrice': num.tryParse(_price.text.trim()) ?? 0,
+        'finalPrice': price ?? 0,
         'paymentMethod': _payment,
+        'alreadyPaid': _alreadyPaid,
         'notes': _notes.text.trim(),
       }),
     );
@@ -139,7 +211,11 @@ class _PhoneBookingScreenState extends State<PhoneBookingScreen> {
             controller: _mobile,
             style: _body14,
             keyboardType: TextInputType.phone,
-            decoration: _fieldDecoration('Mobile', Icons.phone_outlined),
+            maxLength: 14,
+            decoration: _fieldDecoration('Mobile', Icons.phone_outlined).copyWith(
+              counterText: '',
+              helperText: 'An app account with this number sees the booking.',
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -156,7 +232,7 @@ class _PhoneBookingScreenState extends State<PhoneBookingScreen> {
             label: 'Category',
             icon: Icons.category_outlined,
             items: [
-              for (final item in AppConstants.carCategories)
+              for (final item in _categories)
                 DropdownMenuItem(
                   value: item,
                   child: Text(
@@ -166,8 +242,10 @@ class _PhoneBookingScreenState extends State<PhoneBookingScreen> {
                   ),
                 ),
             ],
-            onChanged: (value) =>
-                setState(() => _category = value ?? _category),
+            onChanged: (value) {
+              setState(() => _category = value ?? _category);
+              _quote();
+            },
           ),
           const SizedBox(height: 12),
           _choiceField(
@@ -175,7 +253,7 @@ class _PhoneBookingScreenState extends State<PhoneBookingScreen> {
             label: 'Service',
             icon: Icons.local_car_wash_outlined,
             items: [
-              for (final item in AppConstants.services)
+              for (final item in _services)
                 DropdownMenuItem(
                   value: item,
                   child: Text(
@@ -185,7 +263,10 @@ class _PhoneBookingScreenState extends State<PhoneBookingScreen> {
                   ),
                 ),
             ],
-            onChanged: (value) => setState(() => _service = value ?? _service),
+            onChanged: (value) {
+              setState(() => _service = value ?? _service);
+              _quote();
+            },
           ),
           const SizedBox(height: 12),
           TextField(
@@ -197,6 +278,7 @@ class _PhoneBookingScreenState extends State<PhoneBookingScreen> {
           TextField(
             controller: _city,
             style: _body14,
+            onSubmitted: (_) => _quote(),
             decoration: _fieldDecoration('City', Icons.location_city_outlined),
           ),
           const SizedBox(height: 12),
@@ -224,9 +306,17 @@ class _PhoneBookingScreenState extends State<PhoneBookingScreen> {
             controller: _price,
             style: _body14,
             keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: (_) => _priceTyped = true,
             decoration: _fieldDecoration(
               'Price',
               Icons.currency_rupee_outlined,
+            ).copyWith(
+              helperText: _quoting
+                  ? 'Getting the catalog price…'
+                  : _priceTyped
+                      ? 'Typed by you'
+                      : 'Catalog price. Type to change it.',
             ),
           ),
           const SizedBox(height: 12),
@@ -250,7 +340,14 @@ class _PhoneBookingScreenState extends State<PhoneBookingScreen> {
             ],
             onChanged: (value) => setState(() => _payment = value ?? _payment),
           ),
-          const SizedBox(height: 12),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Already paid', style: _body14),
+            subtitle: const Text('Leave off if the washer collects at the car.', style: _label12),
+            value: _alreadyPaid,
+            onChanged: (value) => setState(() => _alreadyPaid = value),
+          ),
+          const SizedBox(height: 4),
           TextField(
             controller: _notes,
             style: _body14,
@@ -314,7 +411,7 @@ class _BlockSlotScreenState extends State<BlockSlotScreen> {
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      firstDate: DateUtils.dateOnly(DateTime.now()),
       lastDate: DateTime.now().add(const Duration(days: 60)),
       initialDate: _date,
     );
@@ -560,6 +657,8 @@ DropdownButtonFormField<String> _choiceField({
   required ValueChanged<String?> onChanged,
 }) {
   return DropdownButtonFormField<String>(
+    // Rebuild when the options load from the catalog.
+    key: ValueKey('$label|$value|${items.length}'),
     initialValue: value,
     isExpanded: true,
     icon: const Icon(

@@ -48,8 +48,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         children: [
-          Text('Dashboard', style: deskTitle),
-          const SizedBox(height: 10),
           if (_loading && stats == null)
             const Padding(
               padding: EdgeInsets.all(32),
@@ -65,6 +63,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             )
           else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.today_outlined,
+                    label: 'Washes left today',
+                    value: '${stats.todayBookings}',
+                    background: AppConstants.signal,
+                    foreground: AppConstants.ink,
+                    well: const Color(0x33FFFFFF),
+                    iconColor: AppConstants.ink,
+                    onTap: () => _openBookings(context, date: stats.today),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.person_off_outlined,
+                    label: 'Need a washer',
+                    value: '${stats.unassigned}',
+                    background: stats.unassigned > 0 ? AppConstants.dangerBg : const Color(0xFFEFF6FF),
+                    foreground: stats.unassigned > 0 ? AppConstants.danger : AppConstants.ink,
+                    well: Colors.white,
+                    iconColor: stats.unassigned > 0 ? AppConstants.danger : AppConstants.accent,
+                    onTap: () => context.go('/bookings?unassigned=1'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -102,7 +131,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Expanded(
                   child: _StatCard(
                     icon: Icons.currency_rupee_outlined,
-                    label: 'Revenue',
+                    label: 'Booked · ₹${_grouped(stats.collectedRevenue)} paid',
                     value: '₹${_grouped(stats.totalRevenue)}',
                     background: const Color(0xFF1E40AF),
                     foreground: Colors.white,
@@ -125,6 +154,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            _WhiteCard(
+              onTap: () => context.push('/desk/inbox'),
+              child: Row(
+                children: [
+                  const IconWell(icon: Icons.forum_outlined),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text('Customer chats', style: deskRow)),
+                  const Icon(Icons.chevron_right_outlined, color: AppConstants.muted),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             _WeekChart(
@@ -156,8 +197,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     booking: booking,
                     onTap: booking.id.isEmpty
                         ? null
-                        : () {
-                            context.push('/desk/booking', extra: booking);
+                        : () async {
+                            if (await openBooking(context, booking.id, initial: booking)) _load();
                           },
                   ),
                 ),

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -50,7 +51,8 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
       context,
       context.read<AdminService>().staffJobs(
             token,
-            date: indiaYmd(dayOffset: _dayOffset),
+            date: _dayOffset == 2 ? null : indiaYmd(dayOffset: _dayOffset),
+            upcoming: _dayOffset == 2,
           ),
     );
     if (!mounted) return;
@@ -66,6 +68,20 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
     if (next == 'accepted' && !_onShift) {
       _note('Turn on shift before accepting a job');
       return;
+    }
+    if (next == 'completed' && job.due > 0 && job.paymentStatus.toLowerCase() != 'paid') {
+      final go = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Payment still due'),
+          content: Text('₹${_whole(job.due)} is not collected yet. Tap Collected first if the customer paid you.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Go back')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Finish anyway')),
+          ],
+        ),
+      );
+      if (go != true || !mounted) return;
     }
     final token = context.read<AuthProvider>().token;
     setState(() => _busy = true);
@@ -87,7 +103,7 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_dayOffset == 0 ? 'Today’s jobs' : 'Tomorrow’s jobs'),
+        title: Text(const ['Today’s jobs', 'Tomorrow’s jobs', 'Upcoming and overdue'][_dayOffset]),
         titleTextStyle: _Type.bar,
       ),
       body: Column(
@@ -116,6 +132,11 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
                         value: 1,
                         label: Text('Tomorrow'),
                         icon: Icon(Icons.event_outlined, size: 22),
+                      ),
+                      ButtonSegment(
+                        value: 2,
+                        label: Text('Later'),
+                        icon: Icon(Icons.date_range_outlined, size: 22),
                       ),
                     ],
                     selected: {_dayOffset},
@@ -163,7 +184,7 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
                               _Explain(
                                 icon: Icons.assignment_outlined,
                                 title: 'No jobs yet',
-                                body: 'Jobs show up here when they are assigned to you.',
+                                body: 'Jobs show up here when the desk assigns them to you. Pull down to refresh.',
                               ),
                             ],
                           )
@@ -182,6 +203,10 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
                               onAfter: () => _photo(_jobs[index], false),
                               onCollect: () => _collect(_jobs[index]),
                               onClockIn: () => _clockIn(_jobs[index]),
+                              onChat: () => context.push(Uri(
+                                path: '/staff/chat/${_jobs[index].id}',
+                                queryParameters: {'title': _jobs[index].customerName},
+                              ).toString()),
                             ),
                           ),
                   ),
@@ -428,6 +453,7 @@ class _JobCard extends StatelessWidget {
     required this.onAfter,
     required this.onCollect,
     required this.onClockIn,
+    required this.onChat,
   });
 
   final BookingRecord job;
@@ -439,6 +465,7 @@ class _JobCard extends StatelessWidget {
   final VoidCallback onAfter;
   final VoidCallback onCollect;
   final VoidCallback onClockIn;
+  final VoidCallback onChat;
 
   @override
   Widget build(BuildContext context) {
@@ -536,6 +563,7 @@ class _JobCard extends StatelessWidget {
                 _Tap(icon: Icons.payments_outlined, label: 'Collected', onPressed: onCollect),
               if (!job.clockedIn && const {'accepted', 'on_the_way', 'in_progress'}.contains(job.status))
                 _Tap(icon: Icons.timer_outlined, label: 'Clock in', onPressed: onClockIn),
+              _Tap(icon: Icons.forum_outlined, label: 'Chat', onPressed: onChat),
             ],
           ),
         ],

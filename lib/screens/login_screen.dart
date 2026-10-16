@@ -33,7 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _password.text,
       code: auth.otpPending ? _code.text : '',
     );
-    if (!ok && mounted && !auth.otpPending && auth.error != null) {
+    if (!ok && mounted && auth.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -114,12 +114,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (auth.otpPending) ...[
                       const SizedBox(height: 14),
                       Text(
-                        auth.error ?? 'Enter the code sent to your email',
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.4,
-                          color: auth.error == null ? AppConstants.muted : AppConstants.danger,
-                        ),
+                        auth.otpNotice.isEmpty ? 'Enter the code sent to your email' : auth.otpNotice,
+                        style: const TextStyle(fontSize: 14, height: 1.4, color: AppConstants.muted),
                       ),
                       const SizedBox(height: 8),
                       TextFormField(

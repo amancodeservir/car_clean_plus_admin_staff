@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/models.dart';
 import '../providers/auth_provider.dart';
 import 'api_client.dart';
 
@@ -47,4 +49,11 @@ Future<void> dialNumber(String mobile) async {
 String shortDate(String raw) {
   if (raw.length >= 10) return raw.substring(0, 10);
   return raw;
+}
+
+/// Opens one booking on the desk. True when it was changed there.
+Future<bool> openBooking(BuildContext context, String id, {BookingRecord? initial}) async {
+  if (id.isEmpty) return false;
+  final changed = await context.push<bool>('/desk/booking/$id', extra: initial);
+  return changed == true;
 }

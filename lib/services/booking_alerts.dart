@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../core/constants.dart';
@@ -35,7 +36,7 @@ class _BookingAlertWatchState extends State<BookingAlertWatch> with WidgetsBindi
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _prepare();
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _poll());
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _poll());
   }
 
   @override
@@ -109,7 +110,8 @@ class _BookingAlertWatchState extends State<BookingAlertWatch> with WidgetsBindi
     await _banner(item);
     final popup = deskNavigatorKey.currentState?.overlay?.context;
     if (!mounted || popup == null || !popup.mounted) return;
-    await showDialog<void>(
+    final isDesk = context.read<AuthProvider>().account?.isAdmin == true;
+    final open = await showDialog<bool>(
       context: popup,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
@@ -117,14 +119,20 @@ class _BookingAlertWatchState extends State<BookingAlertWatch> with WidgetsBindi
         title: const Text('New customer'),
         content: Text(item.body.isEmpty ? 'A booking just came in.' : item.body),
         actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Open desk'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Later')),
+          if (isDesk && item.bookingId.isNotEmpty)
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Open booking'),
+            ),
         ],
       ),
     );
     _showing = false;
+    final router = deskNavigatorKey.currentContext;
+    if (open == true && router != null && router.mounted) {
+      GoRouter.of(router).push('/desk/booking/${item.bookingId}');
+    }
     if (_queue.isNotEmpty && mounted) unawaited(_present());
   }
 

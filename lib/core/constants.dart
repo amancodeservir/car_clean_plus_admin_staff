@@ -26,6 +26,8 @@ class AppConstants {
   static const String branches = '/admin/branches';
   static const String promos = '/admin/promos';
   static const String payroll = '/admin/payroll';
+  static const String inbox = '/admin/messages';
+  static const String staffShift = '/staff/shift';
 
   static String bookingStatus(String id) => '/admin/bookings/$id/status';
   static String booking(String id) => '/admin/bookings/$id';
@@ -39,6 +41,8 @@ class AppConstants {
   static String staffCollect(String id) => '/staff/jobs/$id/collect';
   static String staffClockIn(String id) => '/staff/jobs/$id/clock-in';
   static String payoutPaid(String id) => '/admin/payroll/$id/paid';
+  static String promo(String id) => '/admin/promos/$id';
+  static String messages(String bookingId) => '/booking/$bookingId/messages';
 
   static const Color ink = Color(0xFF111827);
   static const Color paper = Color(0xFFF7F8FB);
@@ -94,14 +98,16 @@ class AppConstants {
     'Bike',
   ];
 
+  /// Fallback when the catalog cannot be loaded. The live list comes from
+  /// `GET /catalog`.
   static const List<String> services = [
     'Basic Wash',
     'Premium Wash',
     'Complete Clean',
     'Festive Offer',
-    'Waterless Wash',
-    'Doorstep Car Wash',
   ];
+
+  static const List<String> paymentMethods = ['Cash', 'UPI', 'Online'];
 
   static const List<String> festivals = [
     'DIWALI',

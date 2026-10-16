@@ -7,6 +7,7 @@ import '../core/screen_guard.dart';
 import '../models/models.dart';
 import '../providers/auth_provider.dart';
 import '../services/admin_service.dart';
+import '../theme/desk_theme.dart';
 
 class DeskAlertButton extends StatefulWidget {
   const DeskAlertButton({super.key});
@@ -97,6 +98,16 @@ class _AlertsScreenState extends State<AlertsScreen> {
     });
   }
 
+  /// The desk opens the booking; a washer opens the chat on a message.
+  Future<void> _open(DeskAlert item) async {
+    final account = context.read<AuthProvider>().account;
+    if (account?.isAdmin == true) {
+      await openBooking(context, item.bookingId);
+    } else if (item.title.toLowerCase().contains('message')) {
+      await context.push('/staff/chat/${item.bookingId}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -126,7 +137,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final item = _items[index];
-                        return _Surface(
+                        return GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: item.bookingId.isEmpty ? null : () => _open(item),
+                          child: _Surface(
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -148,7 +162,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
                                   ],
                                 ),
                               ),
+                              if (item.bookingId.isNotEmpty)
+                                const Icon(Icons.chevron_right_outlined, color: AppConstants.muted),
                             ],
+                          ),
                           ),
                         );
                       },
@@ -278,7 +295,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Text(account?.email ?? '', style: _Type.muted),
                         const SizedBox(height: 6),
                         Text(
-                          _roleLabel(account?.role ?? ''),
+                          roleLabel(account?.role ?? ''),
                           style: const TextStyle(
                             color: AppConstants.accent,
                             fontSize: 12,
@@ -461,17 +478,6 @@ class _Stat extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-String _roleLabel(String role) {
-  switch (role) {
-    case 'superadmin':
-    case 'admin':
-    case 'staff':
-      return 'Staff';
-    default:
-      return role;
   }
 }
 

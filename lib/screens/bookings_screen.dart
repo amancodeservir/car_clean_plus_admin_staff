@@ -45,6 +45,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
   String _status = '';
   String _payment = '';
   String _date = '';
+  bool _unassigned = false;
   String? _routeKey;
 
   static const _payments = ['Cash', 'UPI', 'Online', 'Pending', 'N/A'];
@@ -53,11 +54,12 @@ class _BookingsScreenState extends State<BookingsScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final params = GoRouterState.of(context).uri.queryParameters;
-    final key = '${params['status'] ?? ''}|${params['date'] ?? ''}';
+    final key = '${params['status'] ?? ''}|${params['date'] ?? ''}|${params['unassigned'] ?? ''}';
     if (key == _routeKey) return;
     _routeKey = key;
     _status = params['status'] ?? '';
     _date = params['date'] ?? '';
+    _unassigned = params['unassigned'] == '1';
     _load();
   }
 
@@ -69,7 +71,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
       context.read<AdminService>().bookings(
         token,
         query:
-            '?status=${Uri.encodeQueryComponent(_status)}&payment=${Uri.encodeQueryComponent(_payment)}&date=${Uri.encodeQueryComponent(_date)}',
+            '?status=${Uri.encodeQueryComponent(_status)}&payment=${Uri.encodeQueryComponent(_payment)}&date=${Uri.encodeQueryComponent(_date)}${_unassigned ? '&unassigned=1' : ''}',
       ),
     );
     if (!mounted) return;
@@ -126,14 +128,36 @@ class _BookingsScreenState extends State<BookingsScreen> {
               },
             ),
           ),
-          if (_date.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Wash date $_date', style: deskCaption.copyWith(color: AppConstants.accent, fontWeight: FontWeight.w700)),
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                FilterChip(
+                  label: const Text('No washer yet'),
+                  selected: _unassigned,
+                  onSelected: (value) {
+                    setState(() => _unassigned = value);
+                    _load();
+                  },
+                ),
+                if (_date.isNotEmpty)
+                  InputChip(
+                    label: Text('Wash date $_date'),
+                    onDeleted: () {
+                      setState(() => _date = '');
+                      _load();
+                    },
+                  ),
+                if (!_loading)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text('${visible.length} shown', style: deskCaption),
+                  ),
+              ],
             ),
+          ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: _load,
@@ -153,11 +177,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           child: _BookingCard(
                             booking: booking,
                             onTap: () async {
-                              final changed = await context.push<bool>(
-                                '/desk/booking',
-                                extra: booking,
-                              );
-                              if (changed == true) _load();
+                              if (await openBooking(context, booking.id, initial: booking)) _load();
                             },
                           ),
                         );
@@ -402,11 +422,37 @@ class _BookingCard extends StatelessWidget {
                       icon: Icons.directions_car_outlined,
                       text: booking.service,
                     ),
+                    if (!booking.isBlocked) ...[
+                      const SizedBox(height: 4),
+                      _MetaLine(
+                        icon: Icons.badge_outlined,
+                        text: booking.washerName.isNotEmpty
+                            ? booking.washerName
+                            : (booking.isClosed ? '—' : 'No washer yet'),
+                        warn: booking.washerName.isEmpty && !booking.isClosed,
+                      ),
+                    ],
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              StatusPill(status: booking.status),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  StatusPill(status: booking.status),
+                  if (!booking.isBlocked) ...[
+                    const SizedBox(height: 8),
+                    Text(rupees(booking.price), style: _ink14),
+                    Text(
+                      booking.isRefunded ? 'Refunded' : (booking.isPaid ? 'Paid' : 'Unpaid'),
+                      style: _label12.copyWith(
+                        color: booking.isPaid ? AppConstants.completed : AppConstants.pending,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
@@ -416,23 +462,24 @@ class _BookingCard extends StatelessWidget {
 }
 
 class _MetaLine extends StatelessWidget {
-  const _MetaLine({required this.icon, required this.text});
+  const _MetaLine({required this.icon, required this.text, this.warn = false});
 
   final IconData icon;
   final String text;
+  final bool warn;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, size: 22, color: AppConstants.accent),
+        Icon(icon, size: 18, color: warn ? AppConstants.pending : AppConstants.accent),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
             text,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: _muted14,
+            style: warn ? _muted14.copyWith(color: AppConstants.pending, fontWeight: FontWeight.w700) : _muted14,
           ),
         ),
       ],

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../core/constants.dart';
@@ -19,7 +18,6 @@ class TransactionsScreen extends StatefulWidget {
 class _TransactionsScreenState extends State<TransactionsScreen> {
   List<LedgerEntry> _items = [];
   bool _loading = true;
-  String? _opening;
 
   @override
   void initState() {
@@ -42,24 +40,21 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   Future<void> _open(LedgerEntry entry) async {
-    if (entry.bookingId.isEmpty || _opening != null) return;
-    setState(() => _opening = entry.id);
-    final token = context.read<AuthProvider>().token;
-    final booking = await runGuarded(
-      context,
-      context.read<AdminService>().booking(token, entry.bookingId),
-    );
-    if (!mounted) return;
-    setState(() => _opening = null);
-    if (booking == null) return;
-    context.push('/desk/booking', extra: booking);
+    if (entry.bookingId.isEmpty) return;
+    if (await openBooking(context, entry.bookingId) && mounted) _load();
   }
 
   @override
   Widget build(BuildContext context) {
-    final payments = _items.where((item) => !item.isRefund);
+    // The ledger holds a payment row for every priced booking; only rows
+    // that were actually paid count as money taken.
+    final payments = _items.where((item) => !item.isRefund && _received(item));
+    final owed = _items.where(
+      (item) => !item.isRefund && !_received(item) && item.bookingStatus != 'cancelled',
+    );
     final refunds = _items.where((item) => item.isRefund);
     final taken = payments.fold<num>(0, (sum, item) => sum + item.amount);
+    final due = owed.fold<num>(0, (sum, item) => sum + item.amount);
     final returned = refunds.fold<num>(0, (sum, item) => sum + item.amount);
     return Scaffold(
       appBar: AppBar(title: Text('Transactions', style: deskTitle)),
@@ -71,7 +66,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 children: [
-                  _NetCard(taken: taken, returned: returned),
+                  _NetCard(taken: taken, returned: returned, due: due),
                   const SizedBox(height: 14),
                   Text('All transactions', style: deskTitle),
                   const SizedBox(height: 10),
@@ -83,7 +78,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _TransactionRow(
                           entry: item,
-                          busy: _opening == item.id,
+                          busy: false,
                           onTap: () => _open(item),
                         ),
                       ),
@@ -95,10 +90,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 }
 
 class _NetCard extends StatelessWidget {
-  const _NetCard({required this.taken, required this.returned});
+  const _NetCard({required this.taken, required this.returned, required this.due});
 
   final num taken;
   final num returned;
+  final num due;
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +114,7 @@ class _NetCard extends StatelessWidget {
           Text('₹${_money(net)}', style: deskHeadline.copyWith(color: Colors.white)),
           const SizedBox(height: 8),
           Text(
-            'Payments ₹${_money(taken)} · Refunds ₹${_money(returned)}',
+            'Paid ₹${_money(taken)} · Refunds ₹${_money(returned)} · Still due ₹${_money(due)}',
             style: deskCaption.copyWith(color: Colors.white),
           ),
         ],
@@ -213,4 +209,9 @@ String _money(num value) {
     buffer.write(whole[index]);
   }
   return value < 0 ? '-$buffer' : buffer.toString();
+}
+
+bool _received(LedgerEntry entry) {
+  final status = entry.paymentStatus.toLowerCase();
+  return status == 'paid' || status == 'refunded';
 }

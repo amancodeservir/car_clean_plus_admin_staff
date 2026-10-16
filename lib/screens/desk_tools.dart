@@ -211,7 +211,9 @@ class _PricesScreenState extends State<_PricesScreen> {
     String? note;
     if (payload is Map) {
       final map = Map<String, dynamic>.from(payload);
-      final prices = map['prices'];
+      // basePrices are the stored amounts; `prices` has the festival
+      // discount applied and must never be saved back.
+      final prices = map['basePrices'] ?? map['prices'];
       if (prices is List) {
         for (final item in prices.whereType<Map>()) {
           final row = Map<String, dynamic>.from(item);
@@ -252,7 +254,7 @@ class _PricesScreenState extends State<_PricesScreen> {
       final festival = map['festival'];
       if (festival is Map && festival['isOfferActive'] == true) {
         note =
-            'Festival pricing is on. Saving writes these amounts into the catalog.';
+            'A festival offer is on. These are the normal prices; customers see the offer price on top.';
       }
     }
     setState(() {
@@ -695,7 +697,9 @@ class _DailyReportScreenState extends State<_DailyReportScreen> {
               children: [
                 if (report == null)
                   const DeskEmpty(message: 'Report could not be loaded.')
-                else
+                else ...[
+                  Text('${report['count'] ?? 0} washes booked', style: _section),
+                  const SizedBox(height: 10),
                   for (final line in lines)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -711,6 +715,47 @@ class _DailyReportScreenState extends State<_DailyReportScreen> {
                         ),
                       ),
                     ),
+                  const SizedBox(height: 8),
+                  const _SectionTitle('Jobs'),
+                  for (final job in _maps(report['jobs']))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: DeskCard(
+                        onTap: () async {
+                          if (await openBooking(context, '${job['_id'] ?? ''}')) _load();
+                        },
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('${job['customer'] ?? 'Customer'}', style: _rowTitle),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    [
+                                      '${job['timeSlot'] ?? ''}',
+                                      '${job['service'] ?? ''}',
+                                      job['assignedStaff'] is Map ? '${(job['assignedStaff'] as Map)['name']}' : 'No washer',
+                                    ].where((part) => part.isNotEmpty).join(' · '),
+                                    style: _caption,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(_rupee(job['finalPrice']), style: _amount),
+                                StatusPill(status: '${job['status'] ?? ''}'),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ],
             ),
     );
@@ -743,12 +788,19 @@ class _CreateStaffScreenState extends State<_CreateStaffScreen> {
   }
 
   Future<void> _save() async {
-    if (_name.text.trim().isEmpty ||
-        !_email.text.contains('@') ||
-        _password.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name, email, and password are required')),
-      );
+    String? problem;
+    final phone = _phone.text.replaceAll(RegExp(r'\D'), '');
+    if (_name.text.trim().isEmpty) {
+      problem = 'Name is required';
+    } else if (!RegExp(r'^\S+@\S+\.\S+$').hasMatch(_email.text.trim())) {
+      problem = 'Enter a valid email';
+    } else if (_password.text.length < 6) {
+      problem = 'Password needs at least 6 characters';
+    } else if (_phone.text.trim().isNotEmpty && phone.length < 10) {
+      problem = 'Phone needs 10 digits';
+    }
+    if (problem != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(problem)));
       return;
     }
     setState(() => _busy = true);
@@ -808,7 +860,9 @@ class _CreateStaffScreenState extends State<_CreateStaffScreen> {
             controller: _password,
             style: _input,
             obscureText: true,
-            decoration: _field('Password', icon: Icons.lock_outlined),
+            decoration: _field('Password', icon: Icons.lock_outlined).copyWith(
+              helperText: 'At least 6 characters. Share it with the washer.',
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -1012,10 +1066,17 @@ class _PromosScreenState extends State<_PromosScreen> {
   }
 
   Future<void> _save() async {
-    if (_code.text.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Code is required')));
+    final value = num.tryParse(_value.text.trim());
+    String? problem;
+    if (_code.text.trim().length < 3) {
+      problem = 'Code needs at least 3 letters';
+    } else if (value == null || value <= 0) {
+      problem = 'Value must be more than zero';
+    } else if (_kind == 'percent' && value > 90) {
+      problem = 'A percent promo can be at most 90%';
+    }
+    if (problem != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(problem)));
       return;
     }
     setState(() => _busy = true);
@@ -1034,6 +1095,17 @@ class _PromosScreenState extends State<_PromosScreen> {
     _code.clear();
     _value.clear();
     await _load();
+  }
+
+  Future<void> _toggle(Map<String, dynamic> row, bool on) async {
+    final id = row['_id']?.toString() ?? '';
+    if (id.isEmpty) return;
+    setState(() => _busy = true);
+    final token = context.read<AuthProvider>().token;
+    final ok = await runOk(context, context.read<AdminService>().put(token, AppConstants.promo(id), {'active': on}));
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) await _load();
   }
 
   @override
@@ -1057,11 +1129,11 @@ class _PromosScreenState extends State<_PromosScreen> {
             items: const [
               DropdownMenuItem(
                 value: 'percent',
-                child: Text('percent', style: _input),
+                child: Text('Percent off', style: _input),
               ),
               DropdownMenuItem(
                 value: 'flat',
-                child: Text('flat', style: _input),
+                child: Text('Rupees off', style: _input),
               ),
             ],
             onChanged: (value) {
@@ -1110,12 +1182,26 @@ class _PromosScreenState extends State<_PromosScreen> {
                               style: _rowTitle,
                             ),
                             const SizedBox(height: 2),
-                            Text('${row['kind'] ?? 'flat'}', style: _caption),
+                            Text(
+                              [
+                                row['kind'] == 'percent' ? 'Percent off' : 'Rupees off',
+                                if ((row['used'] ?? 0) != 0) 'used ${row['used']}',
+                                row['active'] == false ? 'off' : 'on',
+                              ].join(' · '),
+                              style: _caption,
+                            ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(_plainNumber(row['value']), style: _amount),
+                      Text(
+                        row['kind'] == 'percent' ? '${_plainNumber(row['value'])}%' : '₹${_plainNumber(row['value'])}',
+                        style: _amount,
+                      ),
+                      Switch(
+                        value: row['active'] != false,
+                        onChanged: _busy ? null : (on) => _toggle(row, on),
+                      ),
                     ],
                   ),
                 ),
@@ -1187,9 +1273,27 @@ class _PayrollScreenState extends State<_PayrollScreen> {
                   : ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(16),
-                      itemCount: _rows.length,
+                      itemCount: _rows.length + 1,
                       itemBuilder: (context, index) {
-                        final row = _rows[index];
+                        if (index == 0) {
+                          final owed = _rows
+                              .where((row) => row['paid'] != true)
+                              .fold<num>(0, (sum, row) => sum + (row['amount'] is num ? row['amount'] as num : 0));
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _Panel(
+                              child: Row(
+                                children: [
+                                  const _IconBox(icon: Icons.account_balance_wallet_outlined),
+                                  const SizedBox(width: 12),
+                                  const Expanded(child: Text('Still owed to washers', style: _rowTitle)),
+                                  Text('₹${_plainNumber(owed)}', style: _amount),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        final row = _rows[index - 1];
                         final id = row['_id']?.toString() ?? '';
                         final paid = row['paid'] == true;
                         final staff = row['staff'];

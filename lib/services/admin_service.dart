@@ -176,10 +176,14 @@ class AdminService {
     return data['message']?.toString() ?? 'Assigned';
   }
 
-  Future<List<BookingRecord>> staffJobs(String token, {String? date}) async {
-    final path = date == null || date.isEmpty
-        ? AppConstants.staffJobs
-        : '${AppConstants.staffJobs}?date=$date';
+  /// A washer's jobs for one [date], or every open job outside today and
+  /// tomorrow when [upcoming] is true.
+  Future<List<BookingRecord>> staffJobs(String token, {String? date, bool upcoming = false}) async {
+    final path = upcoming
+        ? '${AppConstants.staffJobs}?scope=upcoming'
+        : date == null || date.isEmpty
+            ? AppConstants.staffJobs
+            : '${AppConstants.staffJobs}?date=$date';
     final data = await _api.request(
       method: 'GET',
       path: path,
@@ -251,6 +255,68 @@ class AdminService {
       throw ApiException('Today’s summary was empty', 0);
     }
     return StaffDaySummary.fromJson(Map<String, dynamic>.from(payload));
+  }
+
+  /// Washers only, on-shift first is up to the caller.
+  Future<List<StaffAccount>> staff(String token) async {
+    final data = await _api.request(method: 'GET', path: AppConstants.staffAccount, token: token);
+    return mapList(data['data'], StaffAccount.fromJson);
+  }
+
+  /// Desk edit: date, slot, price, notes, or mark paid.
+  Future<BookingRecord> editBooking(String token, String id, Map<String, dynamic> body) async {
+    final data = await _api.request(method: 'PUT', path: AppConstants.booking(id), token: token, body: body);
+    return BookingRecord.fromJson(Map<String, dynamic>.from(data['data'] as Map));
+  }
+
+  Future<BookingRecord> setStatus(String token, String id, String status, {String reason = ''}) async {
+    final data = await _api.request(
+      method: 'PUT',
+      path: AppConstants.bookingStatus(id),
+      token: token,
+      body: {'status': status, if (reason.isNotEmpty) 'reason': reason},
+    );
+    return BookingRecord.fromJson(Map<String, dynamic>.from(data['data'] as Map));
+  }
+
+  Future<String> refund(String token, String id, num amount) async {
+    final data = await _api.request(
+      method: 'PUT',
+      path: AppConstants.refundBooking(id),
+      token: token,
+      body: {'amount': amount},
+    );
+    return data['message']?.toString() ?? 'Refund recorded';
+  }
+
+  Future<List<ChatMessage>> messages(String token, String bookingId) async {
+    final data = await _api.request(method: 'GET', path: AppConstants.messages(bookingId), token: token);
+    return mapList(data['data'], ChatMessage.fromJson);
+  }
+
+  Future<void> sendMessage(String token, String bookingId, String body) {
+    return _api.request(method: 'POST', path: AppConstants.messages(bookingId), token: token, body: {'body': body});
+  }
+
+  Future<List<InboxThread>> inbox(String token) async {
+    final data = await _api.request(method: 'GET', path: AppConstants.inbox, token: token);
+    return mapList(data['data'], InboxThread.fromJson);
+  }
+
+  /// The catalog price for a phone booking, or null when there is none.
+  Future<num?> quote(String token, {required String category, required String service, required String city}) async {
+    try {
+      final data = await _api.request(
+        method: 'POST',
+        path: '${AppConstants.catalog}/quote',
+        token: token,
+        body: {'category': category, 'service': service, 'city': city},
+      );
+      final payload = data['data'];
+      return payload is Map && payload['total'] is num ? payload['total'] as num : null;
+    } on ApiException {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>> getMap(String token, String path) async {

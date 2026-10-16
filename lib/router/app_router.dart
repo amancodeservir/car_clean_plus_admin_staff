@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../screens/admin_shell.dart';
 import '../screens/booking_detail_screen.dart';
 import '../screens/booking_forms.dart';
+import '../screens/chat_screen.dart';
 import '../screens/bookings_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/desk_tools.dart';
@@ -34,8 +35,9 @@ GoRouter createRouter(AuthProvider auth) {
       if (account == null) return path == '/login' ? null : '/login';
       if (account.isCustomer) return path == '/customer' ? null : '/customer';
       if (account.isStaff) {
-        return path == '/staff' ? null : '/staff';
+        return path == '/staff' || path.startsWith('/staff/') ? null : '/staff';
       }
+      if (path.startsWith('/staff')) return '/dashboard';
       if (path == '/login' || path == '/boot' || path == '/customer' || path == '/staff') {
         return '/dashboard';
       }
@@ -72,6 +74,13 @@ GoRouter createRouter(AuthProvider auth) {
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/customer', builder: (context, state) => const CustomerBlockedScreen()),
       GoRoute(path: '/staff', builder: (context, state) => const StaffShell()),
+      GoRoute(
+        path: '/staff/chat/:id',
+        builder: (context, state) => BookingChatScreen(
+          bookingId: state.pathParameters['id']!,
+          title: state.uri.queryParameters['title'] ?? '',
+        ),
+      ),
       GoRoute(path: '/desk/alerts', builder: (context, state) => const AlertsScreen()),
       GoRoute(path: '/desk/profile', builder: (context, state) => const ProfileScreen()),
       StatefulShellRoute.indexedStack(
@@ -106,15 +115,23 @@ GoRouter createRouter(AuthProvider auth) {
         },
       ),
       GoRoute(
-        path: '/desk/booking',
+        path: '/desk/booking/:id',
         builder: (context, state) {
-          final booking = state.extra;
-          if (booking is! BookingRecord) {
-            return const Scaffold(body: Center(child: Text('Open a booking from the list.')));
-          }
-          return BookingDetailScreen(booking: booking);
+          final extra = state.extra;
+          return BookingDetailScreen(
+            bookingId: state.pathParameters['id']!,
+            initial: extra is BookingRecord ? extra : null,
+          );
         },
       ),
+      GoRoute(
+        path: '/desk/chat/:id',
+        builder: (context, state) => BookingChatScreen(
+          bookingId: state.pathParameters['id']!,
+          title: state.uri.queryParameters['title'] ?? '',
+        ),
+      ),
+      GoRoute(path: '/desk/inbox', builder: (context, state) => const InboxScreen()),
       GoRoute(
         path: '/desk/user',
         builder: (context, state) {

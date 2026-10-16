@@ -25,4 +25,22 @@ class PushRegistrar {
       );
     } catch (_) {}
   }
+
+  /// Stops pushes to this phone for the account that is signing out.
+  static Future<void> unregister(String authToken) async {
+    if (authToken.isEmpty) return;
+    try {
+      if (Firebase.apps.isEmpty) return;
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null || token.isEmpty) return;
+      await http.delete(
+        Uri.parse('${AppConstants.baseUrl}/account/push-token'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $authToken',
+        },
+        body: jsonEncode({'token': token}),
+      ).timeout(const Duration(seconds: 5));
+    } catch (_) {}
+  }
 }

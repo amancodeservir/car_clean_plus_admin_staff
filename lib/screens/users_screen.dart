@@ -19,6 +19,20 @@ class UsersScreen extends StatefulWidget {
 class _UsersScreenState extends State<UsersScreen> {
   List<StaffAccount> _users = [];
   bool _loading = true;
+  String _query = '';
+  String _role = '';
+
+  static const _roles = [('', 'Everyone'), ('customer', 'Customers'), ('staff', 'Washers'), ('admin', 'Admins')];
+
+  List<StaffAccount> get _visible {
+    final query = _query.trim().toLowerCase();
+    return _users.where((user) {
+      if (_role == 'admin' && !user.isAdmin) return false;
+      if (_role.isNotEmpty && _role != 'admin' && user.role != _role) return false;
+      if (query.isEmpty) return true;
+      return '${user.name} ${user.email} ${user.phone}'.toLowerCase().contains(query);
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -45,22 +59,26 @@ class _UsersScreenState extends State<UsersScreen> {
     if (_loading && _users.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
+    final visible = _visible;
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        itemCount: (_users.isEmpty ? 1 : _users.length) + 1,
+        itemCount: (visible.isEmpty ? 1 : visible.length) + 1,
         itemBuilder: (context, index) {
           if (index == 0) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Expanded(
+                  Row(
+                children: [
+                  Expanded(
                     child: Text(
-                      'People',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppConstants.ink),
+                      '${visible.length} of ${_users.length}',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppConstants.muted),
                     ),
                   ),
                   TextButton.icon(
@@ -76,23 +94,45 @@ class _UsersScreenState extends State<UsersScreen> {
                       if (changed == true) _load();
                     },
                     icon: const Icon(Icons.person_add_outlined, size: 16),
-                    label: const Text('Add staff'),
+                    label: const Text('Add washer'),
+                  ),
+                ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Search name, email or phone',
+                      prefixIcon: Icon(Icons.search_outlined, size: 22),
+                    ),
+                    onChanged: (value) => setState(() => _query = value),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final role in _roles)
+                        ChoiceChip(
+                          label: Text(role.$2),
+                          selected: _role == role.$1,
+                          onSelected: (_) => setState(() => _role = role.$1),
+                        ),
+                    ],
                   ),
                 ],
               ),
             );
           }
-          if (_users.isEmpty) {
+          if (visible.isEmpty) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: 28),
               child: Text(
-                'No people yet.',
+                'Nobody matches.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppConstants.muted, fontSize: 14),
               ),
             );
           }
-          final user = _users[index - 1];
+          final user = visible[index - 1];
           final title = user.name.isEmpty ? user.email : user.name;
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -117,7 +157,7 @@ class _UsersScreenState extends State<UsersScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          user.email,
+                          [user.email, if (user.phone.isNotEmpty) user.phone].join(' · '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(color: AppConstants.muted, fontSize: 12),
@@ -151,7 +191,7 @@ class _RolePill extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        role,
+        roleLabel(role),
         style: const TextStyle(
           color: AppConstants.accent,
           fontSize: 12,
@@ -270,10 +310,29 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     if (ok) Navigator.pop(context, true);
   }
 
+  Future<void> _confirmSave() async {
+    if (_role == widget.user.role) return;
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Make ${widget.user.name.isEmpty ? 'this person' : widget.user.name} ${roleLabel(_role).toLowerCase()}?'),
+        content: Text(_role == 'customer'
+            ? 'They lose access to this app.'
+            : 'They can sign in to this app as ${roleLabel(_role).toLowerCase()}.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Back')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Change role')),
+        ],
+      ),
+    );
+    if (go == true && mounted) await _save();
+  }
+
   @override
   Widget build(BuildContext context) {
     final me = context.watch<AuthProvider>().account;
-    final canEdit = me?.isSuperadmin == true;
+    final isMe = me?.id == widget.user.id;
+    final canEdit = me?.isSuperadmin == true && !isMe;
     final title = widget.user.name.isEmpty ? widget.user.email : widget.user.name;
     return Scaffold(
       appBar: AppBar(title: const Text('User')),
@@ -305,6 +364,15 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                   icon: Icons.phone_outlined,
                   text: widget.user.phone.isEmpty ? 'No phone' : widget.user.phone,
                 ),
+                if (widget.user.phone.isNotEmpty)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => dialNumber(widget.user.phone),
+                      icon: const Icon(Icons.call_outlined, size: 20),
+                      label: const Text('Call'),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -318,7 +386,9 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Role: $_role\nOnly a superadmin can change roles.',
+                      isMe
+                          ? 'Role: ${roleLabel(_role)}\nYou cannot change your own role.'
+                          : 'Role: ${roleLabel(_role)}\nOnly a super admin can change roles.',
                       style: const TextStyle(color: AppConstants.ink, fontSize: 14, height: 1.4),
                     ),
                   ),
@@ -336,17 +406,15 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                       labelText: 'Role',
                       prefixIcon: Icon(Icons.admin_panel_settings_outlined, size: 16),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'customer', child: Text('customer')),
-                      DropdownMenuItem(value: 'staff', child: Text('staff')),
-                      DropdownMenuItem(value: 'admin', child: Text('admin')),
-                      DropdownMenuItem(value: 'superadmin', child: Text('superadmin')),
+                    items: [
+                      for (final role in const ['customer', 'staff', 'admin', 'superadmin'])
+                        DropdownMenuItem(value: role, child: Text(roleLabel(role))),
                     ],
                     onChanged: (value) => setState(() => _role = value ?? _role),
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'An admin account cannot promote people. This control is only shown for superadmin.',
+                    'Washers use this app for jobs. Admins run the desk. Customers cannot sign in here.',
                     style: TextStyle(color: AppConstants.muted, fontSize: 12, height: 1.4),
                   ),
                   const SizedBox(height: 16),
@@ -354,7 +422,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                     style: FilledButton.styleFrom(
                       textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                     ),
-                    onPressed: _busy ? null : _save,
+                    onPressed: _busy || _role == widget.user.role ? null : _confirmSave,
                     icon: Icon(_busy ? Icons.hourglass_bottom_outlined : Icons.save_outlined, size: 16),
                     label: Text(_busy ? 'Saving…' : 'Save role'),
                   ),
@@ -382,6 +450,9 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: DeskCard(
+                  onTap: () async {
+                    if (await openBooking(context, wash.id, initial: wash)) _loadWashes();
+                  },
                   child: Row(
                     children: [
                       DeskPhoto(asset: washAssetFor(wash.service), height: 52, width: 52),
@@ -405,7 +476,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                                 const Icon(Icons.currency_rupee_outlined, size: 16, color: AppConstants.accent),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '₹${wash.price}',
+                                  rupees(wash.price),
                                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppConstants.ink),
                                 ),
                               ],

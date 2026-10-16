@@ -731,3 +731,45 @@ IconData statusIcon(String status) {
       return Icons.label_outlined;
   }
 }
+
+/// What a role is called on screen.
+String roleLabel(String role) {
+  switch (role) {
+    case 'superadmin':
+      return 'Super admin';
+    case 'admin':
+      return 'Admin';
+    case 'staff':
+      return 'Washer';
+    case 'customer':
+      return 'Customer';
+    default:
+      return role;
+  }
+}
+
+/// ₹1,23,456 style amounts, whole rupees.
+String rupees(num value) {
+  final whole = value.round().abs().toString();
+  if (whole.length <= 3) return '${value < 0 ? '-' : ''}₹$whole';
+  final last = whole.substring(whole.length - 3);
+  var rest = whole.substring(0, whole.length - 3);
+  final groups = <String>[];
+  while (rest.length > 2) {
+    groups.insert(0, rest.substring(rest.length - 2));
+    rest = rest.substring(0, rest.length - 2);
+  }
+  if (rest.isNotEmpty) groups.insert(0, rest);
+  return '${value < 0 ? '-' : ''}₹${groups.join(',')},$last';
+}
+
+/// "12 Oct, 3:05 PM" in the phone's time zone.
+String whenText(String raw) {
+  final parsed = DateTime.tryParse(raw);
+  if (parsed == null) return raw;
+  final local = parsed.toLocal();
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '${local.day} ${months[local.month - 1]}, $hour:$minute ${local.hour < 12 ? 'AM' : 'PM'}';
+}

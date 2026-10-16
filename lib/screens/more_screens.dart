@@ -83,6 +83,18 @@ class MoreScreen extends StatelessWidget {
           child: Column(
             children: [
               _MoreTile(
+                icon: Icons.forum_outlined,
+                title: 'Customer chats',
+                onTap: () => context.push('/desk/inbox'),
+              ),
+              const Divider(height: 1, thickness: 1),
+              _MoreTile(
+                icon: Icons.receipt_long_outlined,
+                title: 'Transactions',
+                onTap: () => context.push('/desk/transactions'),
+              ),
+              const Divider(height: 1, thickness: 1),
+              _MoreTile(
                 icon: Icons.notifications_outlined,
                 title: 'Alerts',
                 onTap: () => context.push('/desk/alerts'),
@@ -189,7 +201,7 @@ class _RolePill extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        role,
+        roleLabel(role),
         style: const TextStyle(
           color: AppConstants.accent,
           fontSize: 12,
@@ -507,6 +519,22 @@ class _GalleryScreenState extends State<GalleryScreen> {
   }
 
   Future<void> _delete(GalleryItem item) async {
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete this photo?'),
+        content: const Text('It is removed from the website gallery for good. Switch it off to hide it instead.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Back')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppConstants.danger),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (go != true || !mounted) return;
     final token = context.read<AuthProvider>().token;
     final ok = await runOk(
       context,

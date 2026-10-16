@@ -11,19 +11,28 @@ class AdminShell extends StatelessWidget {
   final StatefulNavigationShell shell;
 
   static const _items = <(IconData, String)>[
-    (Icons.dashboard_outlined, 'Board'),
-    (Icons.calendar_month_outlined, 'Book'),
+    (Icons.dashboard_outlined, 'Home'),
+    (Icons.calendar_month_outlined, 'Bookings'),
     (Icons.group_outlined, 'People'),
     (Icons.grid_view_outlined, 'More'),
   ];
+
+  static const _titles = ['Dashboard', 'Bookings', 'People', 'More'];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
-        title: const Text('Staff', style: deskTitle),
-        actions: const [DeskAlertButton()],
+        title: Text(_titles[shell.currentIndex], style: deskTitle),
+        actions: [
+          IconButton(
+            tooltip: 'Customer chats',
+            onPressed: () => context.push('/desk/inbox'),
+            icon: const Icon(Icons.forum_outlined, size: 22, color: AppConstants.accent),
+          ),
+          const DeskAlertButton(),
+        ],
       ),
       body: shell,
       bottomNavigationBar: DecoratedBox(

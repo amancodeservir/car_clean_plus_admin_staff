@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/api_client.dart';
@@ -16,6 +18,12 @@ class AuthService {
 
   final ApiClient _api;
   static const _tokenKey = 'admin_jwt_token';
+  static const _userKey = 'admin_cached_user';
+
+  Future<void> _cache(StaffAccount account) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userKey, jsonEncode(account.toJson()));
+  }
 
   Future<StaffAccount> login(String email, String password, {String code = ''}) async {
     final data = await _api.request(
@@ -42,9 +50,12 @@ class AuthService {
     );
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
+    await _cache(account);
     return account;
   }
 
+  /// Signs back in from the saved token. A dead token signs out; no signal
+  /// keeps the last known account so a washer is not locked out offline.
   Future<StaffAccount?> restore() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey);
@@ -57,10 +68,21 @@ class AuthService {
       );
       final user = data['user'];
       if (user is! Map) return null;
-      return StaffAccount.fromJson(Map<String, dynamic>.from(user), token: token);
-    } on ApiException {
-      await logout();
-      return null;
+      final account = StaffAccount.fromJson(Map<String, dynamic>.from(user), token: token);
+      await _cache(account);
+      return account;
+    } on ApiException catch (error) {
+      if (error.statusCode == 401 || error.statusCode == 403) {
+        await logout();
+        return null;
+      }
+      final cached = prefs.getString(_userKey);
+      if (cached == null) return null;
+      try {
+        return StaffAccount.fromJson(Map<String, dynamic>.from(jsonDecode(cached) as Map), token: token);
+      } catch (_) {
+        return null;
+      }
     }
   }
 
@@ -78,11 +100,14 @@ class AuthService {
     if (user is! Map) {
       throw ApiException('Profile was not saved', 0);
     }
-    return StaffAccount.fromJson(Map<String, dynamic>.from(user), token: token);
+    final account = StaffAccount.fromJson(Map<String, dynamic>.from(user), token: token);
+    await _cache(account);
+    return account;
   }
 
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    await prefs.remove(_userKey);
   }
 }

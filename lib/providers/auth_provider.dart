@@ -16,8 +16,10 @@ class AuthProvider extends ChangeNotifier {
   bool _busy = false;
   bool _otpPending = false;
   String? _error;
+  String _otpNotice = '';
 
   StaffAccount? get account => _account;
+  String get otpNotice => _otpNotice;
   bool get restoring => _restoring;
   bool get busy => _busy;
   bool get otpPending => _otpPending;
@@ -56,7 +58,8 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on OtpRequired catch (error) {
       _otpPending = true;
-      _error = error.message;
+      _otpNotice = error.message;
+      _error = null;
       _busy = false;
       notifyListeners();
       return false;
@@ -82,20 +85,13 @@ class AuthProvider extends ChangeNotifier {
   void applyShift(bool onShift) {
     final current = _account;
     if (current == null) return;
-    _account = StaffAccount(
-      id: current.id,
-      name: current.name,
-      email: current.email,
-      phone: current.phone,
-      role: current.role,
-      token: current.token,
-      onShift: onShift,
-      branch: current.branch,
-    );
+    _account = current.copyWith(onShift: onShift);
     notifyListeners();
   }
 
   Future<void> logout() async {
+    final token = this.token;
+    if (token.isNotEmpty) await PushRegistrar.unregister(token);
     await _authService.logout();
     _account = null;
     _error = null;
