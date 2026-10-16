@@ -159,6 +159,10 @@ class _BookingChatScreenState extends State<BookingChatScreen> {
                     const SizedBox(width: 6),
                     IconButton.filled(
                       tooltip: 'Send',
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppConstants.accent,
+                        foregroundColor: Colors.white,
+                      ),
                       onPressed: _sending ? null : _send,
                       icon: _sending
                           ? const SizedBox(
@@ -166,7 +170,7 @@ class _BookingChatScreenState extends State<BookingChatScreen> {
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Icon(Icons.send_rounded),
+                          : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                     ),
                   ],
                 ),
