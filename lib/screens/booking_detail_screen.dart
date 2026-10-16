@@ -403,7 +403,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       Row(
         children: [
           if (booking.mobile.isNotEmpty) ...[
-            Expanded(child: _Button(icon: Icons.phone_outlined, label: 'Call', onPressed: () => dialNumber(booking.mobile))),
+            Expanded(child: _Button(icon: Icons.phone_outlined, label: 'Call', onPressed: () => dialNumber(booking.mobile, context))),
             const SizedBox(width: 8),
             Expanded(child: _Button(icon: Icons.chat_outlined, label: 'WhatsApp', onPressed: _whatsApp)),
             const SizedBox(width: 8),
@@ -576,7 +576,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               if (booking.washerPhone.isNotEmpty)
                 IconButton(
                   tooltip: 'Call washer',
-                  onPressed: () => dialNumber(booking.washerPhone),
+                  onPressed: () => dialNumber(booking.washerPhone, context),
                   icon: const Icon(Icons.phone_outlined),
                 ),
             ],

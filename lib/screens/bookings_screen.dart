@@ -9,28 +9,7 @@ import '../providers/auth_provider.dart';
 import '../services/admin_service.dart';
 import '../theme/desk_theme.dart';
 
-const _ink14 = TextStyle(
-  fontSize: 14,
-  fontWeight: FontWeight.w700,
-  color: AppConstants.ink,
-);
-
-const _body14 = TextStyle(fontSize: 14, color: AppConstants.ink);
-
-const _muted14 = TextStyle(
-  fontSize: 14,
-  color: AppConstants.muted,
-  height: 1.25,
-);
-
-const _label12 = TextStyle(fontSize: 12, color: AppConstants.muted);
-
-const _source12 = TextStyle(
-  fontSize: 12,
-  fontWeight: FontWeight.w700,
-  color: AppConstants.accent,
-);
-
+/// The desk's booking list: search, one row of filter chips, compact cards.
 class BookingsScreen extends StatefulWidget {
   const BookingsScreen({super.key});
 
@@ -48,7 +27,20 @@ class _BookingsScreenState extends State<BookingsScreen> {
   bool _unassigned = false;
   String? _routeKey;
 
-  static const _payments = ['Cash', 'UPI', 'Online', 'Pending', 'N/A'];
+  static const _statusChips = <(String, String)>[
+    ('', 'All'),
+    ('pending', 'Pending'),
+    ('confirmed', 'Confirmed'),
+    ('accepted', 'Accepted'),
+    ('on_the_way', 'On the way'),
+    ('in_progress', 'Washing'),
+    ('completed', 'Done'),
+    ('cancelled', 'Cancelled'),
+    ('blocked', 'Blocked'),
+    ('lead', 'Unfinished'),
+  ];
+
+  static const _payments = ['Cash', 'UPI', 'Online'];
 
   @override
   void didChangeDependencies() {
@@ -66,13 +58,18 @@ class _BookingsScreenState extends State<BookingsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final token = context.read<AuthProvider>().token;
+    final query = <String, String>{
+      if (_status.isNotEmpty) 'status': _status,
+      if (_payment.isNotEmpty) 'payment': _payment,
+      if (_date.isNotEmpty) 'date': _date,
+      if (_unassigned) 'unassigned': '1',
+    };
     final list = await runGuarded(
       context,
       context.read<AdminService>().bookings(
-        token,
-        query:
-            '?status=${Uri.encodeQueryComponent(_status)}&payment=${Uri.encodeQueryComponent(_payment)}&date=${Uri.encodeQueryComponent(_date)}${_unassigned ? '&unassigned=1' : ''}',
-      ),
+            token,
+            query: query.isEmpty ? '' : '?${Uri(queryParameters: query).query}',
+          ),
     );
     if (!mounted) return;
     setState(() {
@@ -92,11 +89,56 @@ class _BookingsScreenState extends State<BookingsScreen> {
         booking.date,
         booking.timeSlot,
         booking.status,
-        booking.source,
         booking.city,
+        booking.washerName,
       ].join(' ').toLowerCase();
       return haystack.contains(query);
     }).toList();
+  }
+
+  void _setStatus(String value) {
+    if (value == _status) return;
+    setState(() => _status = value);
+    _load();
+  }
+
+  Future<void> _pickPayment() async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final option in ['', ..._payments])
+              ListTile(
+                leading: Icon(
+                  option == _payment ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: AppConstants.accent,
+                ),
+                title: Text(option.isEmpty ? 'Any payment' : option),
+                onTap: () => Navigator.pop(context, option),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || picked == _payment || !mounted) return;
+    setState(() => _payment = picked);
+    _load();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.tryParse(_date) ?? now,
+      firstDate: DateTime(2024),
+      lastDate: now.add(const Duration(days: 90)),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _date = formatYmd(picked));
+    _load();
   }
 
   Future<void> _openPath(String path) async {
@@ -107,53 +149,102 @@ class _BookingsScreenState extends State<BookingsScreen> {
   @override
   Widget build(BuildContext context) {
     final visible = _visible;
+    final filtered = _status.isNotEmpty || _payment.isNotEmpty || _date.isNotEmpty || _unassigned || _query.isNotEmpty;
     return Scaffold(
       backgroundColor: AppConstants.paper,
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: _FilterBlock(
-              status: _status,
-              payment: _payment,
-              payments: _payments,
-              onQuery: (value) => setState(() => _query = value),
-              onStatus: (value) {
-                _status = value ?? '';
-                _load();
-              },
-              onPayment: (value) {
-                _payment = value ?? '';
-                _load();
-              },
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: TextField(
+              style: deskBody,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search name, phone or washer',
+                prefixIcon: const Icon(Icons.search, size: 22, color: AppConstants.muted),
+                filled: true,
+                fillColor: Colors.white,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppConstants.line),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppConstants.line),
+                ),
+              ),
+              onChanged: (value) => setState(() => _query = value),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
+          SizedBox(
+            height: 52,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
               children: [
-                FilterChip(
-                  label: const Text('No washer yet'),
+                _Chip(
+                  icon: Icons.person_off_outlined,
+                  label: 'No washer',
                   selected: _unassigned,
-                  onSelected: (value) {
-                    setState(() => _unassigned = value);
+                  warn: true,
+                  onTap: () {
+                    setState(() => _unassigned = !_unassigned);
                     _load();
                   },
                 ),
-                if (_date.isNotEmpty)
-                  InputChip(
-                    label: Text('Wash date $_date'),
-                    onDeleted: () {
-                      setState(() => _date = '');
+                _Chip(
+                  icon: Icons.calendar_today_outlined,
+                  label: _date.isEmpty ? 'Any date' : _shortDay(_date),
+                  selected: _date.isNotEmpty,
+                  onTap: _pickDate,
+                  onClear: _date.isEmpty
+                      ? null
+                      : () {
+                          setState(() => _date = '');
+                          _load();
+                        },
+                ),
+                _Chip(
+                  icon: Icons.payments_outlined,
+                  label: _payment.isEmpty ? 'Payment' : _payment,
+                  selected: _payment.isNotEmpty,
+                  onTap: _pickPayment,
+                ),
+                Container(
+                  width: 1,
+                  margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                  color: AppConstants.line,
+                ),
+                for (final chip in _statusChips)
+                  _Chip(label: chip.$2, selected: _status == chip.$1, onTap: () => _setStatus(chip.$1)),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 12, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _loading ? 'Loading…' : '${visible.length} ${visible.length == 1 ? 'booking' : 'bookings'}',
+                    style: deskCaption.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (filtered)
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _status = '';
+                        _payment = '';
+                        _date = '';
+                        _unassigned = false;
+                      });
                       _load();
                     },
-                  ),
-                if (!_loading)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Text('${visible.length} shown', style: deskCaption),
+                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                    child: const Text('Clear filters'),
                   ),
               ],
             ),
@@ -169,43 +260,63 @@ class _BookingsScreenState extends State<BookingsScreen> {
                       itemCount: visible.isEmpty ? 1 : visible.length,
                       itemBuilder: (context, index) {
                         if (visible.isEmpty) {
-                          return const DeskEmpty(message: 'No bookings match.');
+                          return const Padding(
+                            padding: EdgeInsets.only(top: 40),
+                            child: DeskEmpty(message: 'No bookings match these filters.'),
+                          );
                         }
                         final booking = visible[index];
+                        Future<void> open() async {
+                          if (await openBooking(context, booking.id, initial: booking)) _load();
+                        }
+
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _BookingCard(
-                            booking: booking,
-                            onTap: () async {
-                              if (await openBooking(context, booking.id, initial: booking)) _load();
-                            },
-                          ),
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: booking.isBlocked
+                              ? _BlockedRow(booking: booking, onTap: open)
+                              : _BookingCard(booking: booking, onTap: open),
                         );
                       },
                     ),
             ),
           ),
-          const Divider(height: 1, color: AppConstants.line),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _BarButton(
-                    icon: Icons.event_busy_outlined,
-                    label: 'Block slot',
-                    onPressed: () => _openPath('/desk/block'),
+          DecoratedBox(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: AppConstants.line)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openPath('/desk/block'),
+                      icon: const Icon(Icons.event_busy_outlined, size: 20),
+                      label: const Text('Block slot'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 44),
+                        shape: const StadiumBorder(),
+                        side: const BorderSide(color: AppConstants.line),
+                        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _BarButton(
-                    icon: Icons.add_ic_call_outlined,
-                    label: 'Phone booking',
-                    onPressed: () => _openPath('/desk/phone'),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => _openPath('/desk/phone'),
+                      icon: const Icon(Icons.add_ic_call_outlined, size: 20),
+                      label: const Text('Phone booking'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 44),
+                        shape: const StadiumBorder(),
+                        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -214,159 +325,88 @@ class _BookingsScreenState extends State<BookingsScreen> {
   }
 }
 
-class _FilterBlock extends StatelessWidget {
-  const _FilterBlock({
-    required this.status,
-    required this.payment,
-    required this.payments,
-    required this.onQuery,
-    required this.onStatus,
-    required this.onPayment,
+/// "Slot 2 – 10:00 AM" → "10:00 AM".
+String _slotTime(String slot) {
+  final parts = slot.split(RegExp(r'\s[–-]\s'));
+  return parts.length > 1 ? parts.last.trim() : slot.trim();
+}
+
+const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+DateTime? _parseDay(String raw) {
+  final iso = DateTime.tryParse(raw);
+  if (iso != null) return iso;
+  final dmy = RegExp(r'^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$').firstMatch(raw.trim());
+  if (dmy == null) return null;
+  return DateTime(int.parse(dmy[3]!), int.parse(dmy[2]!), int.parse(dmy[1]!));
+}
+
+/// "Today", "Tomorrow", or "12 Oct".
+String _shortDay(String raw) {
+  final day = _parseDay(raw);
+  if (day == null) return raw;
+  final today = DateUtils.dateOnly(DateTime.now());
+  final diff = DateUtils.dateOnly(day).difference(today).inDays;
+  if (diff == 0) return 'Today';
+  if (diff == 1) return 'Tomorrow';
+  if (diff == -1) return 'Yesterday';
+  return '${day.day} ${_months[day.month - 1]}';
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+    this.onClear,
+    this.warn = false,
   });
 
-  final String status;
-  final String payment;
-  final List<String> payments;
-  final ValueChanged<String> onQuery;
-  final ValueChanged<String?> onStatus;
-  final ValueChanged<String?> onPayment;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final VoidCallback? onClear;
+  final bool warn;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppConstants.line),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            TextField(
-              style: _body14,
-              decoration: _plainField(
-                icon: Icons.search_outlined,
-                hint: 'Search name, phone, date, status',
-              ),
-              onChanged: onQuery,
-            ),
-            const SizedBox(height: 8),
-            Row(
+    final active = warn ? AppConstants.pending : AppConstants.accent;
+    final fg = selected ? Colors.white : AppConstants.ink;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: selected ? active : Colors.white,
+        shape: StadiumBorder(side: BorderSide(color: selected ? active : AppConstants.line)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(icon == null ? 14 : 10, 0, onClear == null ? 14 : 4, 0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey('status-$status'),
-                    initialValue: status,
-                    isExpanded: true,
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down_outlined,
-                      size: 22,
-                      color: AppConstants.muted,
-                    ),
-                    style: _ink14,
-                    decoration: _plainField(
-                      icon: Icons.flag_outlined,
-                      label: 'Status',
-                    ),
-                    items: [
-                      const DropdownMenuItem(
-                        value: '',
-                        child: Text(
-                          'All statuses',
-                          overflow: TextOverflow.ellipsis,
-                          style: _ink14,
-                        ),
-                      ),
-                      for (final item in AppConstants.statuses)
-                        DropdownMenuItem(
-                          value: item,
-                          child: Text(
-                            prettyStatus(item),
-                            overflow: TextOverflow.ellipsis,
-                            style: _ink14,
-                          ),
-                        ),
-                    ],
-                    onChanged: onStatus,
+                if (icon != null) ...[
+                  Icon(icon, size: 16, color: selected ? Colors.white : AppConstants.muted),
+                  const SizedBox(width: 6),
+                ],
+                Text(label, style: deskCaption.copyWith(color: fg, fontWeight: FontWeight.w700, fontSize: 13)),
+                if (onClear != null)
+                  IconButton(
+                    onPressed: onClear,
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    icon: Icon(Icons.close, size: 16, color: fg),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey('payment-$payment'),
-                    initialValue: payment,
-                    isExpanded: true,
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down_outlined,
-                      size: 22,
-                      color: AppConstants.muted,
-                    ),
-                    style: _ink14,
-                    decoration: _plainField(
-                      icon: Icons.payments_outlined,
-                      label: 'Payment',
-                    ),
-                    items: [
-                      const DropdownMenuItem(
-                        value: '',
-                        child: Text(
-                          'All payments',
-                          overflow: TextOverflow.ellipsis,
-                          style: _ink14,
-                        ),
-                      ),
-                      for (final item in payments)
-                        DropdownMenuItem(
-                          value: item,
-                          child: Text(
-                            item,
-                            overflow: TextOverflow.ellipsis,
-                            style: _ink14,
-                          ),
-                        ),
-                    ],
-                    onChanged: onPayment,
-                  ),
-                ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
-}
-
-const _controlRadius = BorderRadius.all(Radius.circular(16));
-
-InputDecoration _plainField({
-  required IconData icon,
-  String? label,
-  String? hint,
-}) {
-  const border = OutlineInputBorder(
-    borderRadius: _controlRadius,
-    borderSide: BorderSide(color: AppConstants.line),
-  );
-  return InputDecoration(
-    labelText: label,
-    hintText: hint,
-    labelStyle: _label12,
-    floatingLabelStyle: _label12,
-    hintStyle: _muted14,
-    prefixIcon: Icon(icon, size: 22, color: AppConstants.accent),
-    filled: true,
-    fillColor: AppConstants.paper,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    border: border,
-    enabledBorder: border,
-    focusedBorder: const OutlineInputBorder(
-      borderRadius: _controlRadius,
-      borderSide: BorderSide(color: AppConstants.accent, width: 1.5),
-    ),
-  );
 }
 
 class _BookingCard extends StatelessWidget {
@@ -377,81 +417,111 @@ class _BookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = booking.customerName.isEmpty
-        ? booking.service
-        : booking.customerName;
+    final name = booking.customerName.trim().isEmpty ? 'Customer' : booking.customerName.trim();
+    final vehicle = [booking.service, booking.carName].where((part) => part.trim().isNotEmpty).join(' · ');
+    final needsWasher = booking.washerName.isEmpty && !booking.isClosed;
+    final tone = statusTone(booking.status);
     return Material(
       color: Colors.white,
-      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: const BorderSide(color: AppConstants.line),
       ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
+        child: IntrinsicHeight(
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DeskPhoto(
-                asset: washAssetFor(booking.service),
-                height: 64,
-                width: 64,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
+              Container(width: 4, color: tone.foreground),
+              Container(
+                width: 72,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                color: tone.background.withValues(alpha: 0.45),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      title.isEmpty ? 'Booking' : title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: _ink14,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(sourceLabel(booking.source), style: _source12),
-                    const SizedBox(height: 6),
-                    _MetaLine(
-                      icon: Icons.calendar_today_outlined,
-                      text: '${booking.date} · ${booking.timeSlot}',
+                      _shortDay(booking.date),
+                      textAlign: TextAlign.center,
+                      style: deskRow.copyWith(fontSize: 13),
                     ),
                     const SizedBox(height: 4),
-                    _MetaLine(
-                      icon: Icons.directions_car_outlined,
-                      text: booking.service,
+                    Text(
+                      _slotTime(booking.timeSlot),
+                      textAlign: TextAlign.center,
+                      style: deskCaption.copyWith(color: AppConstants.ink),
                     ),
-                    if (!booking.isBlocked) ...[
-                      const SizedBox(height: 4),
-                      _MetaLine(
-                        icon: Icons.badge_outlined,
-                        text: booking.washerName.isNotEmpty
-                            ? booking.washerName
-                            : (booking.isClosed ? '—' : 'No washer yet'),
-                        warn: booking.washerName.isEmpty && !booking.isClosed,
-                      ),
-                    ],
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  StatusPill(status: booking.status),
-                  if (!booking.isBlocked) ...[
-                    const SizedBox(height: 8),
-                    Text(rupees(booking.price), style: _ink14),
-                    Text(
-                      booking.isRefunded ? 'Refunded' : (booking.isPaid ? 'Paid' : 'Unpaid'),
-                      style: _label12.copyWith(
-                        color: booking.isPaid ? AppConstants.completed : AppConstants.pending,
-                        fontWeight: FontWeight.w700,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: deskRow.copyWith(fontSize: 15)),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(rupees(booking.price), style: deskRow.copyWith(fontSize: 15)),
+                        ],
                       ),
-                    ),
-                  ],
-                ],
+                      const SizedBox(height: 3),
+                      Text(
+                        vehicle.isEmpty ? '—' : vehicle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: deskCaption.copyWith(fontSize: 13),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          _Tag(label: prettyStatus(booking.status), tone: tone),
+                          const SizedBox(width: 6),
+                          _Tag(
+                            label: booking.isRefunded ? 'Refunded' : (booking.isPaid ? 'Paid' : 'Unpaid'),
+                            tone: booking.isPaid
+                                ? const StatusTone(AppConstants.completed, AppConstants.completedBg)
+                                : const StatusTone(AppConstants.muted, Color(0xFFF1F3F6)),
+                          ),
+                          const Spacer(),
+                          Text(sourceLabel(booking.source), style: deskCaption),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            needsWasher ? Icons.person_off_outlined : Icons.badge_outlined,
+                            size: 16,
+                            color: needsWasher ? AppConstants.pending : AppConstants.muted,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              needsWasher
+                                  ? 'Needs a washer'
+                                  : (booking.washerName.isEmpty ? 'No washer' : booking.washerName),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: deskCaption.copyWith(
+                                fontSize: 13,
+                                color: needsWasher ? AppConstants.pending : AppConstants.ink,
+                                fontWeight: needsWasher ? FontWeight.w700 : FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -461,66 +531,64 @@ class _BookingCard extends StatelessWidget {
   }
 }
 
-class _MetaLine extends StatelessWidget {
-  const _MetaLine({required this.icon, required this.text, this.warn = false});
+/// A closed slot: one quiet line, not a full booking card.
+class _BlockedRow extends StatelessWidget {
+  const _BlockedRow({required this.booking, required this.onTap});
 
-  final IconData icon;
-  final String text;
-  final bool warn;
+  final BookingRecord booking;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: warn ? AppConstants.pending : AppConstants.accent),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: warn ? _muted14.copyWith(color: AppConstants.pending, fontWeight: FontWeight.w700) : _muted14,
+    final reason = booking.customerName.replaceFirst('[BLOCKED]', '').trim();
+    return Material(
+      color: const Color(0xFFF1F3F6),
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.lock_outline, size: 18, color: AppConstants.muted),
+              const SizedBox(width: 10),
+              Text(
+                '${_shortDay(booking.date)} · ${_slotTime(booking.timeSlot)}',
+                style: deskRow.copyWith(fontSize: 13),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  reason.isEmpty ? 'Slot blocked' : reason,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: deskCaption.copyWith(fontSize: 13),
+                ),
+              ),
+              const Icon(Icons.chevron_right, size: 20, color: AppConstants.muted),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
 
-class _BarButton extends StatelessWidget {
-  const _BarButton({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
+class _Tag extends StatelessWidget {
+  const _Tag({required this.label, required this.tone});
 
-  final IconData icon;
   final String label;
-  final VoidCallback onPressed;
+  final StatusTone tone;
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        backgroundColor: AppConstants.accent,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        minimumSize: const Size(0, 48),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        shape: const StadiumBorder(),
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-      ),
-      icon: Icon(icon, size: 22, color: Colors.white),
-      label: Text(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: tone.background, borderRadius: BorderRadius.circular(999)),
+      child: Text(
         label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-        ),
+        style: deskCaption.copyWith(color: tone.foreground, fontWeight: FontWeight.w700, fontSize: 11),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -39,11 +40,27 @@ Future<void> _showApiError(BuildContext context, ApiException error) async {
   }
 }
 
-Future<void> dialNumber(String mobile) async {
+/// Opens the phone dialer. Where there is none (a simulator, a tablet) or it
+/// fails, shows the number with a Copy button instead of doing nothing.
+Future<void> dialNumber(String mobile, [BuildContext? context]) async {
   final digits = mobile.replaceAll(RegExp(r'[^\d+]'), '');
   if (digits.isEmpty) return;
-  final uri = Uri(scheme: 'tel', path: digits);
-  await launchUrl(uri);
+  var opened = false;
+  try {
+    opened = await launchUrl(Uri(scheme: 'tel', path: digits));
+  } catch (_) {
+    opened = false;
+  }
+  if (opened || context == null || !context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Calls are not available here. Number: $mobile'),
+      action: SnackBarAction(
+        label: 'Copy',
+        onPressed: () => Clipboard.setData(ClipboardData(text: digits)),
+      ),
+    ),
+  );
 }
 
 String shortDate(String raw) {

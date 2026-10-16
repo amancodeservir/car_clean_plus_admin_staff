@@ -368,7 +368,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: TextButton.icon(
-                      onPressed: () => dialNumber(widget.user.phone),
+                      onPressed: () => dialNumber(widget.user.phone, context),
                       icon: const Icon(Icons.call_outlined, size: 20),
                       label: const Text('Call'),
                     ),

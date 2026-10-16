@@ -505,10 +505,13 @@ String sourceLabel(String source) {
       return 'App';
     case 'phone':
       return 'Phone';
+    case 'admin_block':
+      return 'Desk block';
     case 'website':
+    case '':
       return 'Website';
     default:
-      return source.isEmpty ? 'Website' : source;
+      return prettyStatus(source);
   }
 }
 

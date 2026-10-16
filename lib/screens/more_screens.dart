@@ -328,7 +328,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                           child: DeskCard(
                             onTap: item.phone.isEmpty
                                 ? null
-                                : () => dialNumber(item.phone),
+                                : () => dialNumber(item.phone, context),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [

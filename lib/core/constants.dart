@@ -6,6 +6,9 @@ class AppConstants {
     defaultValue: 'https://carcleanplus-backend.vercel.app/api',
   );
 
+  /// The office line washers call for help.
+  static const String supportPhone = '+919120759988';
+
   static const String login = '/auth/login';
   static const String me = '/auth/me';
   static const String dashboard = '/admin/dashboard';

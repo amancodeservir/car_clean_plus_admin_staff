@@ -21,6 +21,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       if (finder.evaluate().isNotEmpty) return;
     }
+    final shown = find.byType(Text).evaluate().map((e) => (e.widget as Text).data ?? '').where((t) => t.isNotEmpty).toList();
+    // ignore: avoid_print
+    print('VISIBLE: ${shown.join(' | ')}');
     throw TestFailure('Timed out waiting for $finder');
   }
 
@@ -77,7 +80,7 @@ void main() {
     await shot(tester, 'desk_dashboard');
 
     await tapText(tester, 'Need a washer');
-    await waitFor(tester, find.text('No washer yet'));
+    await waitFor(tester, find.text('Needs a washer'));
     await shot(tester, 'desk_bookings_unassigned');
     await tapText(tester, 'Priya Sharma');
     await waitFor(tester, find.text('Assign washer'));
@@ -91,15 +94,17 @@ void main() {
 
     await tapText(tester, 'Reschedule / edit');
     await type(tester, 'Price', '450');
+    FocusManager.instance.primaryFocus?.unfocus(); // the keyboard covers the save button
+    await settle(tester, 1200);
     await tapText(tester, 'Save changes');
-    await waitFor(tester, find.text('₹450'));
+    // The header is scrolled out of view here; the history line proves the save.
     await waitFor(tester, find.text('Price changed from ₹399 to ₹450'));
     await shot(tester, 'desk_booking_edited');
 
     await tapText(tester, 'Chat');
     await waitFor(tester, find.text('Please come after 4 pm'));
     await type(tester, 'Write to the customer', 'Ravi is on the way at 4:30');
-    await settle(tester, 1200);
+    await settle(tester, 1500);
     await tester.tap(find.byTooltip('Send'));
     await waitFor(tester, find.descendant(of: find.byType(ListView), matching: find.text('Ravi is on the way at 4:30')));
     await shot(tester, 'desk_chat');
@@ -116,14 +121,37 @@ void main() {
     await waitFor(tester, find.text('Today’s jobs'));
     await waitFor(tester, find.text('Priya Sharma'));
     await shot(tester, 'staff_jobs');
-    await tapOn(tester, find.byType(Switch));
-    await waitFor(tester, find.text('Mark accepted'));
-    await tapText(tester, 'Mark accepted');
-    await waitFor(tester, find.text('Mark on the way'));
+    await tapText(tester, 'Off shift');
+    await waitFor(tester, find.text('Accept job'));
+    await tapText(tester, 'Accept job');
+    await waitFor(tester, find.text('Start driving'));
     await shot(tester, 'staff_accepted');
+
+    await tapText(tester, 'Start driving');
+    await waitFor(tester, find.text('Start wash'));
+    await tapText(tester, 'Start wash');
+    await waitFor(tester, find.text('Finish wash'));
+
+    // Finishing with money due warns first; go back and collect instead.
+    await tapText(tester, 'Finish wash');
+    await waitFor(tester, find.text('Payment still due'));
+    await tapText(tester, 'Go back');
+    await tapText(tester, 'Collect');
+    await waitFor(tester, find.text('Collected at the car'));
+    await tapOn(tester, find.widgetWithText(FilledButton, 'Save'));
+    await waitFor(tester, find.text('Paid'));
+    await tapText(tester, 'Finish wash');
+    await waitFor(tester, find.text('Wash finished'));
+    await shot(tester, 'staff_done');
 
     await tapText(tester, 'Chat');
     await waitFor(tester, find.text('Ravi is on the way at 4:30'));
     await shot(tester, 'staff_chat');
+    await tester.pageBack();
+    await settle(tester);
+
+    await tapText(tester, 'Profile');
+    await waitFor(tester, find.text('Today'));
+    await shot(tester, 'staff_profile');
   });
 }

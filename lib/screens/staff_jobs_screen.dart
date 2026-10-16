@@ -101,117 +101,137 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final account = context.watch<AuthProvider>().account;
+    final first = (account?.name ?? '').trim().split(' ').first;
+    final done = _jobs.where((job) => job.status == 'completed').length;
+    final collected = _jobs.fold<num>(0, (sum, job) => sum + job.collected);
+    final open = _jobs.length - done;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(const ['Today’s jobs', 'Tomorrow’s jobs', 'Upcoming and overdue'][_dayOffset]),
-        titleTextStyle: _Type.bar,
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: Column(
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<int>(
-                    showSelectedIcon: false,
-                    style: const ButtonStyle(
-                      textStyle: WidgetStatePropertyAll(
-                        TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+      backgroundColor: AppConstants.paper,
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_todayLine(), style: _Type.caption.copyWith(letterSpacing: 0.2)),
+                            const SizedBox(height: 2),
+                            Text(
+                              first.isEmpty ? 'Your jobs' : 'Hi, $first',
+                              style: _Type.hero,
+                            ),
+                          ],
+                        ),
                       ),
-                      iconSize: WidgetStatePropertyAll(22),
-                    ),
-                    segments: const [
-                      ButtonSegment(
-                        value: 0,
-                        label: Text('Today'),
-                        icon: Icon(Icons.today_outlined, size: 22),
-                      ),
-                      ButtonSegment(
-                        value: 1,
-                        label: Text('Tomorrow'),
-                        icon: Icon(Icons.event_outlined, size: 22),
-                      ),
-                      ButtonSegment(
-                        value: 2,
-                        label: Text('Later'),
-                        icon: Icon(Icons.date_range_outlined, size: 22),
-                      ),
+                      _ShiftSwitch(on: _onShift, busy: _busy, onTap: _toggleShift),
                     ],
-                    selected: {_dayOffset},
-                    onSelectionChanged: (selection) {
-                      final next = selection.first;
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: _SummaryStrip(
+                    open: open,
+                    done: done,
+                    collected: collected,
+                    label: const ['Today', 'Tomorrow', 'Later'][_dayOffset],
+                  ),
+                ),
+              ),
+              if (!_onShift)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                      decoration: BoxDecoration(
+                        color: AppConstants.pendingBg,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline, size: 18, color: AppConstants.pending),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'You are off shift. Go on shift to accept new jobs.',
+                              style: _Type.caption.copyWith(color: AppConstants.pending, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: _DayTabs(
+                    value: _dayOffset,
+                    onChanged: (next) {
                       if (next == _dayOffset) return;
                       setState(() => _dayOffset = next);
                       _load();
                     },
                   ),
                 ),
-                const SizedBox(height: 12),
-                _Surface(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-                  child: Row(
-                    children: [
-                      const _Well(icon: Icons.badge_outlined),
-                      const SizedBox(width: 12),
-                      const Expanded(child: Text('On shift', style: _Type.section)),
-                      Switch(value: _onShift, onChanged: _busy ? null : (_) => _toggleShift()),
-                    ],
+              ),
+              if (_loading)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_jobs.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _Explain(
+                    icon: Icons.event_available_outlined,
+                    title: _dayOffset == 2 ? 'Nothing coming up' : 'No jobs ${_dayOffset == 0 ? 'today' : 'tomorrow'}',
+                    body: 'New jobs appear here when the desk assigns them to you. Pull down to refresh.',
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                  sliver: SliverList.separated(
+                    itemCount: _jobs.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final job = _jobs[index];
+                      return _JobCard(
+                        job: job,
+                        next: _next[job.status],
+                        onShift: _onShift,
+                        busy: _busy,
+                        showDate: _dayOffset == 2,
+                        onAdvance: () => _advance(job),
+                        onNavigate: () => _navigate(job),
+                        onBefore: () => _photo(job, true),
+                        onAfter: () => _photo(job, false),
+                        onCollect: () => _collect(job),
+                        onClockIn: () => _clockIn(job),
+                        onChat: () => context.push(Uri(
+                          path: '/staff/chat/${job.id}',
+                          queryParameters: {'title': job.customerName},
+                        ).toString()),
+                      );
+                    },
                   ),
                 ),
-                if (!_onShift)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text(
-                      'Off shift. Finish a job you already started. Accept needs the switch on.',
-                      style: _Type.caption,
-                    ),
-                  ),
-              ],
-            ),
+            ],
           ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: _jobs.isEmpty
-                        ? ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.all(16),
-                            children: const [
-                              _Explain(
-                                icon: Icons.assignment_outlined,
-                                title: 'No jobs yet',
-                                body: 'Jobs show up here when the desk assigns them to you. Pull down to refresh.',
-                              ),
-                            ],
-                          )
-                        : ListView.separated(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                            itemCount: _jobs.length,
-                            separatorBuilder: (context, index) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) => _JobCard(
-                              job: _jobs[index],
-                              next: _next[_jobs[index].status],
-                              onShift: _onShift,
-                              onAdvance: () => _advance(_jobs[index]),
-                              onNavigate: () => _navigate(_jobs[index]),
-                              onBefore: () => _photo(_jobs[index], true),
-                              onAfter: () => _photo(_jobs[index], false),
-                              onCollect: () => _collect(_jobs[index]),
-                              onClockIn: () => _clockIn(_jobs[index]),
-                              onChat: () => context.push(Uri(
-                                path: '/staff/chat/${_jobs[index].id}',
-                                queryParameters: {'title': _jobs[index].customerName},
-                              ).toString()),
-                            ),
-                          ),
-                  ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -442,151 +462,34 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
 
 int _whole(num amount) => amount == amount.roundToDouble() ? amount.toInt() : amount.round();
 
-class _JobCard extends StatelessWidget {
-  const _JobCard({
-    required this.job,
-    required this.next,
-    required this.onShift,
-    required this.onAdvance,
-    required this.onNavigate,
-    required this.onBefore,
-    required this.onAfter,
-    required this.onCollect,
-    required this.onClockIn,
-    required this.onChat,
-  });
-
-  final BookingRecord job;
-  final String? next;
-  final bool onShift;
-  final VoidCallback onAdvance;
-  final VoidCallback onNavigate;
-  final VoidCallback onBefore;
-  final VoidCallback onAfter;
-  final VoidCallback onCollect;
-  final VoidCallback onClockIn;
-  final VoidCallback onChat;
-
-  @override
-  Widget build(BuildContext context) {
-    final customer = job.customerName.isEmpty ? 'Customer' : job.customerName;
-    final service = [job.service, job.carName].where((part) => part.isNotEmpty).join(' · ');
-    final source = sourceLabel(job.source);
-    final detail = [
-      if (source.isNotEmpty) source,
-      if (service.isNotEmpty) service,
-    ].join(' · ');
-    final money = job.collected > 0
-        ? '₹${job.price} ${job.paymentMethod} · ₹${_whole(job.collected)} collected'
-        : '₹${job.price} ${job.paymentMethod}';
-    final photos = [
-      if (job.hasBeforePhoto) 'Before photo',
-      if (job.hasAfterPhoto) 'After photo',
-    ].join(' · ');
-    return _Surface(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _Well(icon: Icons.directions_car_outlined),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(customer, style: _Type.section),
-                    const SizedBox(height: 4),
-                    _Line(icon: Icons.schedule_outlined, text: _pair(job.date, job.timeSlot)),
-                    const SizedBox(height: 2),
-                    _Line(icon: Icons.location_on_outlined, text: _place(job.address, job.city)),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              _StatusPill(status: job.status),
-            ],
-          ),
-          if (detail.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(detail, style: _Type.caption),
-          ],
-          const SizedBox(height: 4),
-          Text(money, style: _Type.caption),
-          if (job.instructions.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(job.instructions, style: _Type.caption),
-          ],
-          if (job.clockedIn) ...[
-            const SizedBox(height: 4),
-            const Text('Clocked in', style: _Type.caption),
-          ],
-          if (photos.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(photos, style: _Type.caption),
-          ],
-          if (job.mobile.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: TextButton.icon(
-                onPressed: () => dialNumber(job.mobile),
-                icon: const Icon(Icons.phone_outlined, size: 22),
-                label: Text(job.mobile),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppConstants.accent,
-                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                  padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-                  minimumSize: const Size(44, 44),
-                  tapTargetSize: MaterialTapTargetSize.padded,
-                ),
-              ),
-            ),
-          const SizedBox(height: 12),
-          StatusTree(
-            status: job.status,
-            onShift: onShift,
-            onNext: next != null && (next != 'accepted' || onShift) ? onAdvance : null,
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (job.address.isNotEmpty || job.city.isNotEmpty || job.latitude != null)
-                _Tap(icon: Icons.navigation_outlined, label: 'Navigate', onPressed: onNavigate),
-              if (job.status != 'completed')
-                _Tap(icon: Icons.photo_camera_outlined, label: 'Before', onPressed: onBefore),
-              if (job.status == 'in_progress' || (job.status == 'completed' && !job.hasAfterPhoto))
-                _Tap(icon: Icons.image_outlined, label: 'After', onPressed: onAfter),
-              if (job.due > 0 && const {'accepted', 'on_the_way', 'in_progress', 'completed'}.contains(job.status))
-                _Tap(icon: Icons.payments_outlined, label: 'Collected', onPressed: onCollect),
-              if (!job.clockedIn && const {'accepted', 'on_the_way', 'in_progress'}.contains(job.status))
-                _Tap(icon: Icons.timer_outlined, label: 'Clock in', onPressed: onClockIn),
-              _Tap(icon: Icons.forum_outlined, label: 'Chat', onPressed: onChat),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+String _todayLine() {
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  final now = DateTime.now();
+  return '${days[now.weekday - 1]}, ${now.day} ${months[now.month - 1]}'.toUpperCase();
 }
 
-String _pair(String a, String b) {
-  final kept = [a, b].where((part) => part.trim().isNotEmpty).toList();
-  return kept.isEmpty ? '—' : kept.join(' · ');
+/// "Slot 2 – 10:00 AM" → ("10:00", "AM").
+(String, String) _slotParts(String slot) {
+  final match = RegExp(r'(\d{1,2}:\d{2})\s*([AP]M)', caseSensitive: false).firstMatch(slot);
+  if (match == null) return (slot.isEmpty ? '—' : slot, '');
+  return (match[1]!, match[2]!.toUpperCase());
 }
 
-String _place(String address, String city) {
-  final kept = [address, city].where((part) => part.trim().isNotEmpty).toList();
-  return kept.isEmpty ? '—' : kept.join(', ');
+String _shortDate(String raw) {
+  final day = DateTime.tryParse(raw);
+  if (day == null) return raw;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return '${day.day} ${months[day.month - 1]}';
 }
 
 class _Type {
-  static const bar = TextStyle(
+  static const hero = TextStyle(
+    fontSize: 26,
+    height: 1.15,
+    fontWeight: FontWeight.w800,
+    letterSpacing: -0.6,
     color: AppConstants.ink,
-    fontSize: 16,
-    fontWeight: FontWeight.w700,
   );
   static const section = TextStyle(
     fontSize: 16,
@@ -601,70 +504,449 @@ class _Type {
   );
 }
 
-class _Surface extends StatelessWidget {
-  const _Surface({
-    required this.child,
-    this.padding = const EdgeInsets.all(16),
-  });
+class _ShiftSwitch extends StatelessWidget {
+  const _ShiftSwitch({required this.on, required this.busy, required this.onTap});
 
-  final Widget child;
-  final EdgeInsets padding;
+  final bool on;
+  final bool busy;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppConstants.line),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _Well extends StatelessWidget {
-  const _Well({required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppConstants.iconWell,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Icon(icon, size: 22, color: AppConstants.accent),
-    );
-  }
-}
-
-class _Line extends StatelessWidget {
-  const _Line({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 22, color: AppConstants.accent),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 14, height: 1.35, color: AppConstants.ink),
+    final color = on ? AppConstants.completed : AppConstants.muted;
+    return Semantics(
+      button: true,
+      toggled: on,
+      label: 'On shift',
+      child: Material(
+        color: on ? AppConstants.completedBg : Colors.white,
+        shape: StadiumBorder(side: BorderSide(color: on ? AppConstants.completedBg : AppConstants.line)),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: busy ? null : onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 14, 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: on ? AppConstants.completed : AppConstants.line,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  on ? 'On shift' : 'Off shift',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color),
+                ),
+              ],
+            ),
           ),
         ),
-      ],
+      ),
+    );
+  }
+}
+
+class _SummaryStrip extends StatelessWidget {
+  const _SummaryStrip({required this.open, required this.done, required this.collected, required this.label});
+
+  final int open;
+  final int done;
+  final num collected;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget cell(String value, String caption) => Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
+              const SizedBox(height: 2),
+              Text(caption, style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 12, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        );
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      decoration: BoxDecoration(
+        color: AppConstants.accent,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          cell('$open', const {'Today': 'To do today', 'Tomorrow': 'Tomorrow', 'Later': 'Open jobs'}[label] ?? label),
+          Container(width: 1, height: 34, color: const Color(0x33FFFFFF)),
+          const SizedBox(width: 16),
+          cell('$done', 'Finished'),
+          Container(width: 1, height: 34, color: const Color(0x33FFFFFF)),
+          const SizedBox(width: 16),
+          cell(rupees(collected), 'Collected'),
+        ],
+      ),
+    );
+  }
+}
+
+class _DayTabs extends StatelessWidget {
+  const _DayTabs({required this.value, required this.onChanged});
+
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    const labels = ['Today', 'Tomorrow', 'Later'];
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE9ECF2),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          for (var index = 0; index < labels.length; index++)
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => onChanged(index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: value == index ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: value == index
+                        ? const [BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2))]
+                        : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    labels[index],
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: value == index ? AppConstants.ink : AppConstants.muted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What the big button says for the next step.
+String _nextLabel(String next) {
+  switch (next) {
+    case 'accepted':
+      return 'Accept job';
+    case 'on_the_way':
+      return 'Start driving';
+    case 'in_progress':
+      return 'Start wash';
+    case 'completed':
+      return 'Finish wash';
+    default:
+      return 'Next';
+  }
+}
+
+IconData _nextIcon(String next) {
+  switch (next) {
+    case 'accepted':
+      return Icons.check_rounded;
+    case 'on_the_way':
+      return Icons.directions_car_filled_outlined;
+    case 'in_progress':
+      return Icons.local_car_wash_outlined;
+    default:
+      return Icons.task_alt_rounded;
+  }
+}
+
+class _JobCard extends StatelessWidget {
+  const _JobCard({
+    required this.job,
+    required this.next,
+    required this.onShift,
+    required this.busy,
+    required this.showDate,
+    required this.onAdvance,
+    required this.onNavigate,
+    required this.onBefore,
+    required this.onAfter,
+    required this.onCollect,
+    required this.onClockIn,
+    required this.onChat,
+  });
+
+  final BookingRecord job;
+  final String? next;
+  final bool onShift;
+  final bool busy;
+  final bool showDate;
+  final VoidCallback onAdvance;
+  final VoidCallback onNavigate;
+  final VoidCallback onBefore;
+  final VoidCallback onAfter;
+  final VoidCallback onCollect;
+  final VoidCallback onClockIn;
+  final VoidCallback onChat;
+
+  @override
+  Widget build(BuildContext context) {
+    final customer = job.customerName.isEmpty ? 'Customer' : job.customerName;
+    final (time, meridiem) = _slotParts(job.timeSlot);
+    final done = job.status == 'completed';
+    final step = statusStepIndex(job.status);
+    final place = [job.address, job.city].where((part) => part.trim().isNotEmpty).join(', ');
+    final vehicle = [job.service, job.carName].where((part) => part.trim().isNotEmpty).join(' · ');
+    final paid = job.due <= 0 || job.paymentStatus.toLowerCase() == 'paid';
+    final canAccept = next != 'accepted' || onShift;
+    final active = const {'accepted', 'on_the_way', 'in_progress'}.contains(job.status);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppConstants.line),
+        boxShadow: const [BoxShadow(color: Color(0x0A0F172A), blurRadius: 12, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 64,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (showDate)
+                        Text(_shortDate(job.date), style: _Type.caption.copyWith(fontWeight: FontWeight.w700, color: AppConstants.accent)),
+                      Text(time, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppConstants.ink)),
+                      Text(meridiem, style: _Type.caption.copyWith(fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(customer, maxLines: 1, overflow: TextOverflow.ellipsis, style: _Type.section),
+                          ),
+                          _StatusPill(status: job.status),
+                        ],
+                      ),
+                      if (vehicle.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(vehicle, maxLines: 1, overflow: TextOverflow.ellipsis, style: _Type.caption.copyWith(fontSize: 13)),
+                      ],
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 1),
+                            child: Icon(Icons.place_outlined, size: 16, color: AppConstants.muted),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              place.isEmpty ? 'No address' : place,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 13, height: 1.35, color: AppConstants.ink),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (job.instructions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                decoration: BoxDecoration(color: AppConstants.paper, borderRadius: BorderRadius.circular(10)),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.sticky_note_2_outlined, size: 16, color: AppConstants.muted),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(job.instructions, style: const TextStyle(fontSize: 13, height: 1.35, color: AppConstants.ink))),
+                  ],
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              children: [
+                Text(rupees(job.price), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppConstants.ink)),
+                const SizedBox(width: 6),
+                Text(job.paymentMethod, style: _Type.caption),
+                const Spacer(),
+                Text(
+                  paid ? 'Paid' : '${rupees(job.due)} to collect',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: paid ? AppConstants.completed : AppConstants.pending,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Row(
+              children: [
+                for (var index = 1; index < statusSteps.length; index++) ...[
+                  Expanded(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: done || index <= step ? AppConstants.accent : const Color(0xFFE9ECF2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  if (index < statusSteps.length - 1) const SizedBox(width: 4),
+                ],
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            child: Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                if (place.isNotEmpty || job.latitude != null)
+                  _IconAction(icon: Icons.navigation_outlined, label: 'Navigate', onTap: onNavigate),
+                if (job.mobile.isNotEmpty)
+                  _IconAction(icon: Icons.call_outlined, label: 'Call', onTap: () => dialNumber(job.mobile, context)),
+                _IconAction(icon: Icons.chat_bubble_outline, label: 'Chat', onTap: onChat),
+                if (!done)
+                  _IconAction(
+                    icon: job.hasBeforePhoto ? Icons.check_circle_outline : Icons.photo_camera_outlined,
+                    label: 'Before',
+                    onTap: onBefore,
+                  ),
+                if (job.status == 'in_progress' || (done && !job.hasAfterPhoto))
+                  _IconAction(
+                    icon: job.hasAfterPhoto ? Icons.check_circle_outline : Icons.camera_alt_outlined,
+                    label: 'After',
+                    onTap: onAfter,
+                  ),
+                if (!paid && (active || done))
+                  _IconAction(icon: Icons.payments_outlined, label: 'Collect', onTap: onCollect, highlight: true),
+                if (!job.clockedIn && active)
+                  _IconAction(icon: Icons.timer_outlined, label: 'Clock in', onTap: onClockIn),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: done
+                ? Container(
+                    height: 48,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: AppConstants.completedBg, borderRadius: BorderRadius.circular(14)),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.task_alt_rounded, size: 20, color: AppConstants.completed),
+                        SizedBox(width: 8),
+                        Text('Wash finished', style: TextStyle(fontWeight: FontWeight.w700, color: AppConstants.completed)),
+                      ],
+                    ),
+                  )
+                : next == null
+                    ? const SizedBox.shrink()
+                    : SizedBox(
+                        height: 50,
+                        child: FilledButton.icon(
+                          onPressed: busy || !canAccept ? null : onAdvance,
+                          icon: Icon(canAccept ? _nextIcon(next!) : Icons.lock_outline, size: 20),
+                          label: Text(canAccept ? _nextLabel(next!) : 'Go on shift to accept'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: next == 'completed' ? AppConstants.completed : AppConstants.accent,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IconAction extends StatelessWidget {
+  const _IconAction({required this.icon, required this.label, required this.onTap, this.highlight = false});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = highlight ? AppConstants.pending : AppConstants.accent;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 62,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: highlight ? AppConstants.pendingBg : AppConstants.iconWell,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 20, color: color),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: highlight ? AppConstants.pending : AppConstants.ink),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -678,59 +960,14 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final tone = statusTone(status);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: tone.background,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        prettyStatus(status),
-        style: TextStyle(
-          color: tone.foreground,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
-class _Tap extends StatelessWidget {
-  const _Tap({required this.icon, required this.label, required this.onPressed});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      shape: const StadiumBorder(side: BorderSide(color: AppConstants.line)),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onPressed,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 22, color: AppConstants.accent),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: AppConstants.ink,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        status == 'in_progress' ? 'Washing' : prettyStatus(status),
+        style: TextStyle(color: tone.foreground, fontSize: 11, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -746,13 +983,19 @@ class _Explain extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 36, 8, 12),
+      padding: const EdgeInsets.fromLTRB(32, 24, 32, 48),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _Well(icon: icon),
+          Container(
+            width: 64,
+            height: 64,
+            decoration: const BoxDecoration(color: AppConstants.iconWell, shape: BoxShape.circle),
+            child: Icon(icon, size: 28, color: AppConstants.accent),
+          ),
           const SizedBox(height: 16),
           Text(title, textAlign: TextAlign.center, style: _Type.section),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             body,
             textAlign: TextAlign.center,
@@ -763,4 +1006,3 @@ class _Explain extends StatelessWidget {
     );
   }
 }
-
