@@ -117,18 +117,29 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                   child: Row(
                     children: [
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(_todayLine(), style: _Type.caption.copyWith(letterSpacing: 0.2)),
-                            const SizedBox(height: 2),
+                            Text(
+                              _todayLine(),
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                                color: AppConstants.muted,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
                             Text(
                               first.isEmpty ? 'Your jobs' : 'Hi, $first',
-                              style: _Type.hero,
+                              style: _Type.hero.copyWith(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.6,
+                              ),
                             ),
                           ],
                         ),
@@ -154,10 +165,11 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Container(
-                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                      padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
                       decoration: BoxDecoration(
                         color: AppConstants.pendingBg,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFDE68A)),
                       ),
                       child: Row(
                         children: [
@@ -166,7 +178,11 @@ class _StaffJobsScreenState extends State<StaffJobsScreen> {
                           Expanded(
                             child: Text(
                               'You are off shift. Go on shift to accept new jobs.',
-                              style: _Type.caption.copyWith(color: AppConstants.pending, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: AppConstants.pending,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -497,11 +513,6 @@ class _Type {
     fontWeight: FontWeight.w700,
     color: AppConstants.ink,
   );
-  static const caption = TextStyle(
-    fontSize: 12,
-    height: 1.3,
-    color: AppConstants.muted,
-  );
 }
 
 class _ShiftSwitch extends StatelessWidget {
@@ -513,35 +524,53 @@ class _ShiftSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = on ? AppConstants.completed : AppConstants.muted;
     return Semantics(
       button: true,
       toggled: on,
       label: 'On shift',
       child: Material(
-        color: on ? AppConstants.completedBg : Colors.white,
-        shape: StadiumBorder(side: BorderSide(color: on ? AppConstants.completedBg : AppConstants.line)),
+        color: on ? const Color(0xFFECFDF5) : Colors.white,
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: on ? const Color(0xFF6EE7B7) : AppConstants.line,
+            width: 1.2,
+          ),
+        ),
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: busy ? null : onTap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 14, 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: 10,
-                  height: 10,
+                  width: 9,
+                  height: 9,
                   decoration: BoxDecoration(
-                    color: on ? AppConstants.completed : AppConstants.line,
+                    color: on ? const Color(0xFF059669) : const Color(0xFF9CA3AF),
                     shape: BoxShape.circle,
+                    boxShadow: on
+                        ? const [
+                            BoxShadow(
+                              color: Color(0x66059669),
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   on ? 'On shift' : 'Off shift',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.1,
+                    color: on ? const Color(0xFF065F46) : AppConstants.muted,
+                  ),
                 ),
               ],
             ),
@@ -566,26 +595,72 @@ class _SummaryStrip extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.4)),
-              const SizedBox(height: 2),
-              Text(caption, style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 12, fontWeight: FontWeight.w600)),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                caption,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xD8FFFFFF),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
+                ),
+              ),
             ],
           ),
         );
+
+    final openTitle = const {'Today': 'To do today', 'Tomorrow': 'Tomorrow', 'Later': 'Open jobs'}[label] ?? label;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        color: AppConstants.accent,
-        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1E3A8A),
+            Color(0xFF2563EB),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x281D4ED8),
+            blurRadius: 16,
+            offset: Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: const Color(0x1FFFFFFF)),
       ),
       child: Row(
         children: [
-          cell('$open', const {'Today': 'To do today', 'Tomorrow': 'Tomorrow', 'Later': 'Open jobs'}[label] ?? label),
-          Container(width: 1, height: 34, color: const Color(0x33FFFFFF)),
-          const SizedBox(width: 16),
+          cell('$open', openTitle),
+          Container(
+            width: 1,
+            height: 34,
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            color: const Color(0x33FFFFFF),
+          ),
           cell('$done', 'Finished'),
-          Container(width: 1, height: 34, color: const Color(0x33FFFFFF)),
-          const SizedBox(width: 16),
+          Container(
+            width: 1,
+            height: 34,
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            color: const Color(0x33FFFFFF),
+          ),
           cell(rupees(collected), 'Collected'),
         ],
       ),
@@ -605,8 +680,9 @@ class _DayTabs extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFE9ECF2),
+        color: const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Row(
         children: [
@@ -617,12 +693,19 @@ class _DayTabs extends StatelessWidget {
                 onTap: () => onChanged(index),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  padding: const EdgeInsets.symmetric(vertical: 9),
                   decoration: BoxDecoration(
                     color: value == index ? Colors.white : Colors.transparent,
                     borderRadius: BorderRadius.circular(10),
+                    border: value == index ? Border.all(color: const Color(0xFFE2E8F0)) : null,
                     boxShadow: value == index
-                        ? const [BoxShadow(color: Color(0x14000000), blurRadius: 6, offset: Offset(0, 2))]
+                        ? const [
+                            BoxShadow(
+                              color: Color(0x0F0F172A),
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
+                            ),
+                          ]
                         : null,
                   ),
                   alignment: Alignment.center,
@@ -631,8 +714,8 @@ class _DayTabs extends StatelessWidget {
                     maxLines: 1,
                     softWrap: false,
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5,
+                      fontWeight: value == index ? FontWeight.w800 : FontWeight.w600,
                       color: value == index ? AppConstants.ink : AppConstants.muted,
                     ),
                   ),
@@ -718,30 +801,67 @@ class _JobCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppConstants.line),
-        boxShadow: const [BoxShadow(color: Color(0x0A0F172A), blurRadius: 12, offset: Offset(0, 4))],
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C0F172A),
+            blurRadius: 14,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 64,
+                Container(
+                  width: 66,
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (showDate)
-                        Text(_shortDate(job.date), style: _Type.caption.copyWith(fontWeight: FontWeight.w700, color: AppConstants.accent)),
-                      Text(time, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppConstants.ink)),
-                      Text(meridiem, style: _Type.caption.copyWith(fontWeight: FontWeight.w700)),
+                      if (showDate) ...[
+                        Text(
+                          _shortDate(job.date),
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppConstants.accent,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                      ],
+                      Text(
+                        time,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                          color: AppConstants.ink,
+                        ),
+                      ),
+                      Text(
+                        meridiem,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: AppConstants.muted,
+                        ),
+                      ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -749,22 +869,50 @@ class _JobCard extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(customer, maxLines: 1, overflow: TextOverflow.ellipsis, style: _Type.section),
+                            child: Text(
+                              customer,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
+                                color: AppConstants.ink,
+                              ),
+                            ),
                           ),
+                          const SizedBox(width: 6),
                           _StatusPill(status: job.status),
                         ],
                       ),
                       if (vehicle.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(vehicle, maxLines: 1, overflow: TextOverflow.ellipsis, style: _Type.caption.copyWith(fontSize: 13)),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.directions_car_outlined, size: 14, color: AppConstants.muted),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                vehicle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppConstants.muted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Padding(
                             padding: EdgeInsets.only(top: 1),
-                            child: Icon(Icons.place_outlined, size: 16, color: AppConstants.muted),
+                            child: Icon(Icons.place_outlined, size: 15, color: AppConstants.muted),
                           ),
                           const SizedBox(width: 4),
                           Expanded(
@@ -772,7 +920,12 @@ class _JobCard extends StatelessWidget {
                               place.isEmpty ? 'No address' : place,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 13, height: 1.35, color: AppConstants.ink),
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                height: 1.3,
+                                fontWeight: FontWeight.w500,
+                                color: AppConstants.ink,
+                              ),
                             ),
                           ),
                         ],
@@ -785,51 +938,94 @@ class _JobCard extends StatelessWidget {
           ),
           if (job.instructions.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                decoration: BoxDecoration(color: AppConstants.paper, borderRadius: BorderRadius.circular(10)),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.sticky_note_2_outlined, size: 16, color: AppConstants.muted),
+                    const Icon(Icons.sticky_note_2_outlined, size: 15, color: AppConstants.muted),
                     const SizedBox(width: 6),
-                    Expanded(child: Text(job.instructions, style: const TextStyle(fontSize: 13, height: 1.35, color: AppConstants.ink))),
+                    Expanded(
+                      child: Text(
+                        job.instructions,
+                        style: const TextStyle(fontSize: 12.5, height: 1.35, color: AppConstants.ink),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
             child: Row(
               children: [
-                Text(rupees(job.price), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppConstants.ink)),
-                const SizedBox(width: 6),
-                Text(job.paymentMethod, style: _Type.caption),
-                const Spacer(),
                 Text(
-                  paid ? 'Paid' : '${rupees(job.due)} to collect',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: paid ? AppConstants.completed : AppConstants.pending,
+                  rupees(job.price),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppConstants.ink),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    job.paymentMethod,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppConstants.muted),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: paid ? AppConstants.completedBg : AppConstants.pendingBg,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: paid ? const Color(0xFFA7F3D0) : const Color(0xFFFDE68A),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        paid ? Icons.check_circle_outlined : Icons.schedule_outlined,
+                        size: 13,
+                        color: paid ? AppConstants.completed : AppConstants.pending,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        paid ? 'Paid' : '${rupees(job.due)} to collect',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: paid ? AppConstants.completed : AppConstants.pending,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
             child: Row(
               children: [
                 for (var index = 1; index < statusSteps.length; index++) ...[
                   Expanded(
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
-                      height: 4,
+                      height: 3.5,
                       decoration: BoxDecoration(
-                        color: done || index <= step ? AppConstants.accent : const Color(0xFFE9ECF2),
-                        borderRadius: BorderRadius.circular(4),
+                        color: done || index <= step ? AppConstants.accent : const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(99),
                       ),
                     ),
                   ),
@@ -839,10 +1035,11 @@ class _JobCard extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
             child: Wrap(
-              spacing: 4,
+              spacing: 2,
               runSpacing: 4,
+              alignment: WrapAlignment.spaceAround,
               children: [
                 if (place.isNotEmpty || job.latitude != null)
                   _IconAction(icon: Icons.navigation_outlined, label: 'Navigate', onTap: onNavigate),
@@ -869,33 +1066,42 @@ class _JobCard extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
             child: done
                 ? Container(
                     height: 48,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: AppConstants.completedBg, borderRadius: BorderRadius.circular(14)),
+                    decoration: BoxDecoration(
+                      color: AppConstants.completedBg,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                    ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.task_alt_rounded, size: 20, color: AppConstants.completed),
                         SizedBox(width: 8),
-                        Text('Wash finished', style: TextStyle(fontWeight: FontWeight.w700, color: AppConstants.completed)),
+                        Text(
+                          'Wash finished',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: AppConstants.completed),
+                        ),
                       ],
                     ),
                   )
                 : next == null
                     ? const SizedBox.shrink()
                     : SizedBox(
-                        height: 50,
+                        height: 48,
                         child: FilledButton.icon(
                           onPressed: busy || !canAccept ? null : onAdvance,
-                          icon: Icon(canAccept ? _nextIcon(next!) : Icons.lock_outline, size: 20),
+                          icon: Icon(canAccept ? _nextIcon(next!) : Icons.lock_outline, size: 19),
                           label: Text(canAccept ? _nextLabel(next!) : 'Go on shift to accept'),
                           style: FilledButton.styleFrom(
-                            backgroundColor: next == 'completed' ? AppConstants.completed : AppConstants.accent,
+                            backgroundColor: next == 'completed' ? const Color(0xFF059669) : const Color(0xFF1D4ED8),
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                            textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: -0.2),
+                            elevation: 0,
                           ),
                         ),
                       ),
@@ -921,27 +1127,34 @@ class _IconAction extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: SizedBox(
-        width: 62,
+        width: 60,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: highlight ? AppConstants.pendingBg : AppConstants.iconWell,
+                  color: highlight ? AppConstants.pendingBg : const Color(0xFFEFF6FF),
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: highlight ? const Color(0xFFFDE68A) : const Color(0xFFDBEAFE),
+                  ),
                 ),
-                child: Icon(icon, size: 20, color: color),
+                child: Icon(icon, size: 19, color: color),
               ),
               const SizedBox(height: 4),
               Text(
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: highlight ? AppConstants.pending : AppConstants.ink),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: highlight ? AppConstants.pending : AppConstants.ink,
+                ),
               ),
             ],
           ),
@@ -960,14 +1173,15 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final tone = statusTone(status);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
       decoration: BoxDecoration(
         color: tone.background,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: tone.foreground.withValues(alpha: 0.25), width: 1),
       ),
       child: Text(
         status == 'in_progress' ? 'Washing' : prettyStatus(status),
-        style: TextStyle(color: tone.foreground, fontSize: 11, fontWeight: FontWeight.w700),
+        style: TextStyle(color: tone.foreground, fontSize: 11, fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -990,16 +1204,29 @@ class _Explain extends StatelessWidget {
           Container(
             width: 64,
             height: 64,
-            decoration: const BoxDecoration(color: AppConstants.iconWell, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
             child: Icon(icon, size: 28, color: AppConstants.accent),
           ),
           const SizedBox(height: 16),
-          Text(title, textAlign: TextAlign.center, style: _Type.section),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+              color: AppConstants.ink,
+            ),
+          ),
           const SizedBox(height: 6),
           Text(
             body,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, height: 1.4, color: AppConstants.muted),
+            style: const TextStyle(fontSize: 13.5, height: 1.4, color: AppConstants.muted),
           ),
         ],
       ),

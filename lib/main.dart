@@ -52,7 +52,9 @@ class _AdminAppState extends State<AdminApp> {
       child: MaterialApp.router(
         title: 'Car Clean Plus Staff',
         debugShowCheckedModeBanner: false,
-        theme: DeskTheme.data,
+        theme: DeskTheme.data.copyWith(
+          scaffoldBackgroundColor: Colors.white,
+        ),
         routerConfig: _router,
         builder: (context, child) => BookingAlertWatch(child: child ?? const SizedBox.shrink()),
       ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'api_logger.dart';
 import 'constants.dart';
 
 class ApiException implements Exception {
@@ -26,9 +27,18 @@ class ApiClient {
       if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
     };
 
+    final uri = Uri.parse('${AppConstants.baseUrl}$path');
+    final stopwatch = Stopwatch()..start();
+
+    ApiLogger.logRequest(
+      method: method,
+      url: uri.toString(),
+      headers: headers,
+      body: body,
+    );
+
     http.Response response;
     try {
-      final uri = Uri.parse('${AppConstants.baseUrl}$path');
       switch (method) {
         case 'GET':
           response = await http.get(uri, headers: headers);
@@ -49,9 +59,32 @@ class ApiClient {
         default:
           throw ApiException('Unsupported request', 0);
       }
-    } on ApiException {
+      stopwatch.stop();
+      ApiLogger.logResponse(
+        method: method,
+        url: uri.toString(),
+        statusCode: response.statusCode,
+        durationMs: stopwatch.elapsedMilliseconds,
+        responseBody: response.body,
+      );
+    } on ApiException catch (e) {
+      stopwatch.stop();
+      ApiLogger.logError(
+        method: method,
+        url: uri.toString(),
+        durationMs: stopwatch.elapsedMilliseconds,
+        error: e.message,
+        statusCode: e.statusCode,
+      );
       rethrow;
-    } catch (_) {
+    } catch (error) {
+      stopwatch.stop();
+      ApiLogger.logError(
+        method: method,
+        url: uri.toString(),
+        durationMs: stopwatch.elapsedMilliseconds,
+        error: error,
+      );
       throw ApiException('Could not reach the server', 0);
     }
 

@@ -48,7 +48,7 @@ class AppConstants {
   static String messages(String bookingId) => '/booking/$bookingId/messages';
 
   static const Color ink = Color(0xFF111827);
-  static const Color paper = Color(0xFFF7F8FB);
+  static const Color paper = Color(0xFFFFFFFF);
   static const Color signal = Color(0xFFF5C400);
   static const Color accent = Color(0xFF1D4ED8);
   static const Color iconWell = Color(0xFFE8F0FE);

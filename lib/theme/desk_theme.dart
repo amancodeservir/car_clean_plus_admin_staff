@@ -79,7 +79,7 @@ class DeskTheme {
     return ThemeData(
       useMaterial3: true,
       fontFamily: deskFont,
-      scaffoldBackgroundColor: AppConstants.paper,
+      scaffoldBackgroundColor: Colors.white,
       textTheme: deskText,
       primaryTextTheme: deskText,
       colorScheme: const ColorScheme.light(
@@ -93,9 +93,9 @@ class DeskTheme {
       ),
       iconTheme: const IconThemeData(color: AppConstants.accent, size: deskIconSize),
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppConstants.paper,
+        backgroundColor: Colors.white,
         foregroundColor: AppConstants.ink,
-        surfaceTintColor: AppConstants.paper,
+        surfaceTintColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,

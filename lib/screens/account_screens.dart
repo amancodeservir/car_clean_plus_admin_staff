@@ -453,13 +453,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Row(
                   children: [
                     Container(
-                      width: 56,
-                      height: 56,
+                      width: 62,
+                      height: 62,
                       alignment: Alignment.center,
-                      decoration: const BoxDecoration(color: AppConstants.accent, shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF1E40AF),
+                            Color(0xFF3B82F6),
+                          ],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x331D4ED8),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
                       child: Text(
                         initials,
-                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
+                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -467,21 +485,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(name.isEmpty ? 'Your account' : name, maxLines: 1, overflow: TextOverflow.ellipsis, style: _Type.section),
+                          Text(
+                            name.isEmpty ? 'Your account' : name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
+                              color: AppConstants.ink,
+                            ),
+                          ),
                           const SizedBox(height: 2),
-                          Text(account?.email ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: _Type.muted),
+                          Text(
+                            account?.email ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppConstants.muted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           Wrap(
                             spacing: 6,
                             runSpacing: 6,
                             children: [
-                              _Badge(label: roleLabel(account?.role ?? ''), color: AppConstants.accent, background: AppConstants.iconWell),
+                              _Badge(
+                                label: roleLabel(account?.role ?? ''),
+                                color: AppConstants.accent,
+                                background: const Color(0xFFEFF6FF),
+                                border: const Color(0xFFDBEAFE),
+                              ),
                               if (account?.isStaff == true)
                                 account!.onShift
-                                    ? const _Badge(label: 'On shift', color: AppConstants.completed, background: AppConstants.completedBg)
-                                    : const _Badge(label: 'Off shift', color: AppConstants.muted, background: Color(0xFFF1F3F6)),
+                                    ? const _Badge(
+                                        label: 'On shift',
+                                        color: Color(0xFF065F46),
+                                        background: Color(0xFFECFDF5),
+                                        border: Color(0xFFA7F3D0),
+                                        dot: Color(0xFF059669),
+                                      )
+                                    : const _Badge(
+                                        label: 'Off shift',
+                                        color: AppConstants.muted,
+                                        background: Color(0xFFF1F5F9),
+                                        border: Color(0xFFE2E8F0),
+                                        dot: Color(0xFF9CA3AF),
+                                      ),
                               if ((account?.branch ?? '').isNotEmpty)
-                                _Badge(label: account!.branch, color: AppConstants.ink, background: const Color(0xFFF1F3F6)),
+                                _Badge(
+                                  label: account!.branch,
+                                  color: AppConstants.ink,
+                                  background: const Color(0xFFF1F5F9),
+                                  border: const Color(0xFFE2E8F0),
+                                ),
                             ],
                           ),
                         ],
@@ -580,9 +639,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     : Column(
                         children: [
                           _InfoRow(icon: Icons.person_outline, label: 'Name', value: account?.name ?? ''),
-                          const Divider(height: 1, indent: 52),
+                          const Divider(height: 1, indent: 64, color: Color(0xFFF1F5F9)),
                           _InfoRow(icon: Icons.phone_outlined, label: 'Phone', value: account?.phone ?? ''),
-                          const Divider(height: 1, indent: 52),
+                          const Divider(height: 1, indent: 64, color: Color(0xFFF1F5F9)),
                           _InfoRow(icon: Icons.mail_outline, label: 'Email', value: account?.email ?? ''),
                         ],
                       ),
@@ -600,13 +659,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         MaterialPageRoute<void>(builder: (_) => const ChangePasswordScreen()),
                       ),
                     ),
-                    const Divider(height: 1, indent: 52),
+                    const Divider(height: 1, indent: 64, color: Color(0xFFF1F5F9)),
                     _Row(
                       icon: Icons.support_agent_outlined,
                       label: 'Call the desk',
                       onTap: () => dialNumber(AppConstants.supportPhone, context),
                     ),
-                    const Divider(height: 1, indent: 52),
+                    const Divider(height: 1, indent: 64, color: Color(0xFFF1F5F9)),
                     _Row(
                       icon: Icons.logout_rounded,
                       label: 'Log out',
@@ -635,23 +694,51 @@ class _StaffNumbers extends StatelessWidget {
     final progress = summary.jobs == 0 ? 0.0 : summary.completed / summary.jobs;
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: AppConstants.accent, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1E3A8A),
+            Color(0xFF2563EB),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x281D4ED8),
+            blurRadius: 16,
+            offset: Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: const Color(0x1FFFFFFF)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text('Today', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+              const Text(
+                "Today's Overview",
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: -0.2),
+              ),
               const Spacer(),
-              Text(
-                '${summary.completed} of ${summary.jobs} done',
-                style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 13, fontWeight: FontWeight.w600),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0x26FFFFFF),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${summary.completed} of ${summary.jobs} done',
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(99),
             child: LinearProgressIndicator(
               value: progress,
               minHeight: 6,
@@ -659,7 +746,7 @@ class _StaffNumbers extends StatelessWidget {
               backgroundColor: const Color(0x33FFFFFF),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Row(
             children: [
               _WhiteStat(value: '${summary.pending + summary.active}', label: 'Still to do'),
@@ -667,10 +754,14 @@ class _StaffNumbers extends StatelessWidget {
               _WhiteStat(value: rupees(summary.collectedUpi), label: 'UPI'),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(color: const Color(0x1FFFFFFF), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+              color: const Color(0x1FFFFFFF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0x24FFFFFF)),
+            ),
             child: Row(
               children: [
                 const Icon(Icons.account_balance_wallet_outlined, size: 18, color: Colors.white),
@@ -678,7 +769,7 @@ class _StaffNumbers extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Collected ${rupees(cash)} of ${rupees(summary.expected)} booked',
-                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
@@ -699,7 +790,25 @@ class _DeskNumbers extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: AppConstants.accent, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1E3A8A),
+            Color(0xFF2563EB),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x281D4ED8),
+            blurRadius: 16,
+            offset: Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: const Color(0x1FFFFFFF)),
+      ),
       child: Row(
         children: [
           _WhiteStat(value: '${desk.todayBookings}', label: 'Today'),
@@ -727,10 +836,22 @@ class _WhiteStat extends StatelessWidget {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.4),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 21,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.4,
+            ),
           ),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: Color(0xCCFFFFFF), fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xD8FFFFFF),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -750,19 +871,35 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       child: Row(
         children: [
-          Icon(icon, size: 22, color: AppConstants.accent),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFDBEAFE)),
+            ),
+            child: Icon(icon, size: 19, color: AppConstants.accent),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: _Type.caption),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppConstants.muted,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   value.trim().isEmpty ? 'Not added' : value,
                   style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
                     color: value.trim().isEmpty ? AppConstants.muted : AppConstants.ink,
                   ),
                 ),
@@ -933,8 +1070,15 @@ class _Card extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppConstants.line),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A0F172A),
+            blurRadius: 14,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: child,
     );
@@ -959,18 +1103,43 @@ class _Label extends StatelessWidget {
 }
 
 class _Badge extends StatelessWidget {
-  const _Badge({required this.label, required this.color, required this.background});
+  const _Badge({
+    required this.label,
+    required this.color,
+    required this.background,
+    this.border,
+    this.dot,
+  });
 
   final String label;
   final Color color;
   final Color background;
+  final Color? border;
+  final Color? dot;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(999)),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+        border: border != null ? Border.all(color: border!) : null,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (dot != null) ...[
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 5),
+          ],
+          Text(label, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: color)),
+        ],
+      ),
     );
   }
 }
@@ -985,16 +1154,37 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDanger = color == AppConstants.danger;
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+        padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: color == AppConstants.ink ? AppConstants.accent : color),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: isDanger ? const Color(0xFFFEE2E2) : const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDanger ? const Color(0xFFFECACA) : const Color(0xFFDBEAFE),
+                ),
+              ),
+              child: Icon(icon, size: 19, color: isDanger ? const Color(0xFFDC2626) : AppConstants.accent),
+            ),
             const SizedBox(width: 14),
-            Expanded(child: Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: color))),
-            const Icon(Icons.chevron_right, color: AppConstants.muted),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: isDanger ? const Color(0xFFDC2626) : AppConstants.ink,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 20, color: Color(0xFF9CA3AF)),
           ],
         ),
       ),

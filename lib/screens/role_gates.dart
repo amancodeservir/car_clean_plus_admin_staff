@@ -9,40 +9,107 @@ class CustomerBlockedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _NoticeScreen(
-      title: 'Customer account',
-      icon: Icons.person_outlined,
-      message:
-          'This app is for staff. Open the Car Clean Plus customer app to book a wash.',
+    final account = context.watch<AuthProvider>().account;
+    final email = account?.email.trim().isNotEmpty == true
+        ? account!.email.trim()
+        : '';
+
+    return Scaffold(
+      appBar: AppBar(),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+          children: [
+            // Warning Icon
+            Center(
+              child: Container(
+                width: 56,
+                height: 56,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppConstants.pendingBg,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  size: 30,
+                  color: AppConstants.pending,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Title
+            const Text(
+              'Staff & Admin Access Only',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppConstants.ink,
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // Message
+            const Text(
+              'This app is for staff & admins only. \n Open the Car Clean Plus customer app to book a wash.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.45,
+                color: AppConstants.muted,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            if (email.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppConstants.line),
+                  ),
+                  child: Text(
+                    'Signed in: $email',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppConstants.muted,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 32),
+
+            // Log out Button
+            FilledButton.icon(
+              onPressed: () => context.read<AuthProvider>().logout(),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              icon: const Icon(Icons.logout_outlined, size: 20),
+              label: const Text('Log out'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
 class StaffWaitingScreen extends StatelessWidget {
   const StaffWaitingScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final role = context.watch<AuthProvider>().account?.role ?? 'staff';
-    return _NoticeScreen(
-      title: 'Staff jobs are not ready',
-      icon: Icons.badge_outlined,
-      message:
-          'You are signed in as $role. Assigned jobs, accept, and on-the-way updates need a staff role on the server. That work is still pending.',
-    );
-  }
-}
-
-class _NoticeScreen extends StatelessWidget {
-  const _NoticeScreen({
-    required this.title,
-    required this.message,
-    required this.icon,
-  });
-
-  final String title;
-  final String message;
-  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -59,61 +126,44 @@ class _NoticeScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
           children: [
-            Center(child: _Well(icon: icon)),
+            Center(
+              child: Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppConstants.iconWell,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.badge_outlined,
+                  size: 22,
+                  color: AppConstants.accent,
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
             Text(
-              title,
+              'Staff jobs are not ready',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 16,
-                height: 1.25,
                 fontWeight: FontWeight.w700,
                 color: AppConstants.ink,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                height: 1.4,
-                color: AppConstants.muted,
               ),
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: () => context.read<AuthProvider>().logout(),
               style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                minimumSize: const Size.fromHeight(50),
               ),
-              icon: const Icon(Icons.logout_outlined, size: 22),
+              icon: const Icon(Icons.logout_outlined, size: 20),
               label: const Text('Log out'),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Well extends StatelessWidget {
-  const _Well({required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppConstants.iconWell,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Icon(icon, size: 22, color: AppConstants.accent),
     );
   }
 }

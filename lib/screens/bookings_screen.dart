@@ -271,7 +271,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                         }
 
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.only(bottom: 8),
                           child: booking.isBlocked
                               ? _BlockedRow(booking: booking, onTap: open)
                               : _BookingCard(booking: booking, onTap: open),
@@ -421,10 +421,15 @@ class _BookingCard extends StatelessWidget {
     final vehicle = [booking.service, booking.carName].where((part) => part.trim().isNotEmpty).join(' · ');
     final needsWasher = booking.washerName.isEmpty && !booking.isClosed;
     final tone = statusTone(booking.status);
+    final washerLabel = needsWasher
+        ? 'Needs washer'
+        : (booking.washerName.isEmpty ? 'No washer' : booking.washerName);
+    final payLabel = booking.isRefunded ? 'Refunded' : (booking.isPaid ? 'Paid' : 'Unpaid');
+
     return Material(
       color: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppConstants.line),
       ),
       clipBehavior: Clip.antiAlias,
@@ -434,85 +439,107 @@ class _BookingCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(width: 4, color: tone.foreground),
+              // Left color strip + date+time
+              Container(width: 3, color: tone.foreground),
               Container(
-                width: 72,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                color: tone.background.withValues(alpha: 0.45),
+                width: 62,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                color: tone.background.withValues(alpha: 0.4),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       _shortDay(booking.date),
                       textAlign: TextAlign.center,
-                      style: deskRow.copyWith(fontSize: 13),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppConstants.ink,
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       _slotTime(booking.timeSlot),
                       textAlign: TextAlign.center,
-                      style: deskCaption.copyWith(color: AppConstants.ink),
+                      style: const TextStyle(fontSize: 10.5, color: AppConstants.muted),
                     ),
                   ],
                 ),
               ),
+              // Right content
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Name + price in one row
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: deskRow.copyWith(fontSize: 15)),
+                            child: Text(
+                              name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppConstants.ink,
+                              ),
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          Text(rupees(booking.price), style: deskRow.copyWith(fontSize: 15)),
+                          const SizedBox(width: 6),
+                          Text(
+                            rupees(booking.price),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppConstants.ink,
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
+                      // Service + car in one line
                       Text(
                         vehicle.isEmpty ? '—' : vehicle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: deskCaption.copyWith(fontSize: 13),
+                        style: const TextStyle(fontSize: 11, color: AppConstants.muted),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 5),
+                      // Row 1: Status tag + Pay tag
                       Row(
                         children: [
                           _Tag(label: prettyStatus(booking.status), tone: tone),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           _Tag(
-                            label: booking.isRefunded ? 'Refunded' : (booking.isPaid ? 'Paid' : 'Unpaid'),
+                            label: payLabel,
                             tone: booking.isPaid
                                 ? const StatusTone(AppConstants.completed, AppConstants.completedBg)
                                 : const StatusTone(AppConstants.muted, Color(0xFFF1F3F6)),
                           ),
-                          const Spacer(),
-                          Text(sourceLabel(booking.source), style: deskCaption),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
+                      // Row 2: Washer info
                       Row(
                         children: [
                           Icon(
                             needsWasher ? Icons.person_off_outlined : Icons.badge_outlined,
-                            size: 16,
+                            size: 12,
                             color: needsWasher ? AppConstants.pending : AppConstants.muted,
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              needsWasher
-                                  ? 'Needs a washer'
-                                  : (booking.washerName.isEmpty ? 'No washer' : booking.washerName),
+                              washerLabel,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: deskCaption.copyWith(
-                                fontSize: 13,
-                                color: needsWasher ? AppConstants.pending : AppConstants.ink,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: needsWasher ? AppConstants.pending : AppConstants.muted,
                                 fontWeight: needsWasher ? FontWeight.w700 : FontWeight.w400,
                               ),
                             ),
@@ -530,6 +557,7 @@ class _BookingCard extends StatelessWidget {
     );
   }
 }
+
 
 /// A closed slot: one quiet line, not a full booking card.
 class _BlockedRow extends StatelessWidget {

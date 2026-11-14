@@ -42,6 +42,23 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<StaffAccount?> refreshAccount() async {
+    _busy = true;
+    notifyListeners();
+    try {
+      final updated = await _authService.restore();
+      if (updated != null) {
+        _account = updated;
+      }
+      return updated;
+    } catch (_) {
+      return null;
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> login(String email, String password, {String code = ''}) async {
     _busy = true;
     _error = null;

@@ -71,29 +71,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     icon: Icons.today_outlined,
                     label: 'Washes left today',
                     value: '${stats.todayBookings}',
-                    background: AppConstants.signal,
-                    foreground: AppConstants.ink,
-                    well: const Color(0x33FFFFFF),
-                    iconColor: AppConstants.ink,
+                    background: const Color(0xFFFBBF24),
+                    gradientEnd: const Color(0xFFF59E0B),
+                    foreground: const Color(0xFF78350F),
+                    well: const Color(0x40FFFFFF),
+                    iconColor: const Color(0xFF78350F),
                     onTap: () => _openBookings(context, date: stats.today),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: _StatCard(
                     icon: Icons.person_off_outlined,
                     label: 'Need a washer',
                     value: '${stats.unassigned}',
-                    background: stats.unassigned > 0 ? AppConstants.dangerBg : const Color(0xFFEFF6FF),
-                    foreground: stats.unassigned > 0 ? AppConstants.danger : AppConstants.ink,
-                    well: Colors.white,
-                    iconColor: stats.unassigned > 0 ? AppConstants.danger : AppConstants.accent,
+                    background: stats.unassigned > 0 ? const Color(0xFFEF4444) : const Color(0xFFEFF6FF),
+                    gradientEnd: stats.unassigned > 0 ? const Color(0xFFDC2626) : const Color(0xFFDBEAFE),
+                    foreground: stats.unassigned > 0 ? Colors.white : AppConstants.ink,
+                    well: stats.unassigned > 0 ? const Color(0x40FFFFFF) : Colors.white,
+                    iconColor: stats.unassigned > 0 ? Colors.white : AppConstants.accent,
                     onTap: () => context.go('/bookings?unassigned=1'),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -102,29 +104,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     icon: Icons.event_note_outlined,
                     label: 'Bookings',
                     value: '${stats.totalBookings}',
-                    background: AppConstants.accent,
+                    background: const Color(0xFF3B82F6),
+                    gradientEnd: const Color(0xFF2563EB),
                     foreground: Colors.white,
-                    well: const Color(0x33FFFFFF),
+                    well: const Color(0x40FFFFFF),
                     iconColor: Colors.white,
                     onTap: () => _openBookings(context),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: _StatCard(
                     icon: Icons.hourglass_bottom_outlined,
                     label: 'Pending',
                     value: '${stats.pendingBookings}',
-                    background: const Color(0xFFDBEAFE),
-                    foreground: const Color(0xFF1E3A8A),
+                    background: const Color(0xFFEFF6FF),
+                    gradientEnd: const Color(0xFFDBEAFE),
+                    foreground: const Color(0xFF1D4ED8),
                     well: Colors.white,
-                    iconColor: AppConstants.accent,
+                    iconColor: const Color(0xFF2563EB),
                     onTap: () => _openBookings(context, status: 'pending'),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -133,37 +137,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     icon: Icons.currency_rupee_outlined,
                     label: 'Booked · ₹${_grouped(stats.collectedRevenue)} paid',
                     value: '₹${_grouped(stats.totalRevenue)}',
-                    background: const Color(0xFF1E40AF),
+                    background: const Color(0xFF1E3A8A),
+                    gradientEnd: const Color(0xFF312E81),
                     foreground: Colors.white,
-                    well: const Color(0x33FFFFFF),
+                    well: const Color(0x40FFFFFF),
                     iconColor: Colors.white,
                     onTap: () => context.push('/desk/transactions'),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: _StatCard(
                     icon: Icons.mail_outlined,
                     label: 'Enquiries',
                     value: '${stats.totalInquiries}',
-                    background: const Color(0xFFEFF6FF),
-                    foreground: AppConstants.ink,
+                    background: const Color(0xFFF0F9FF),
+                    gradientEnd: const Color(0xFFE0F2FE),
+                    foreground: const Color(0xFF0369A1),
                     well: Colors.white,
-                    iconColor: AppConstants.accent,
+                    iconColor: const Color(0xFF0284C7),
                     onTap: () => context.push('/desk/contacts'),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             _WhiteCard(
               onTap: () => context.push('/desk/inbox'),
               child: Row(
                 children: [
-                  const IconWell(icon: Icons.forum_outlined),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppConstants.iconWell,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.forum_outlined, size: 18, color: AppConstants.accent),
+                  ),
                   const SizedBox(width: 10),
-                  Expanded(child: Text('Customer chats', style: deskRow)),
-                  const Icon(Icons.chevron_right_outlined, color: AppConstants.muted),
+                  Expanded(
+                    child: Text(
+                      'Customer chats',
+                      style: TextStyle(
+                        fontFamily: deskFont,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppConstants.ink,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_outlined, size: 20, color: AppConstants.muted),
                 ],
               ),
             ),
@@ -268,6 +293,7 @@ class _StatCard extends StatelessWidget {
     required this.well,
     required this.iconColor,
     required this.onTap,
+    this.gradientEnd,
   });
 
   final IconData icon;
@@ -278,36 +304,96 @@ class _StatCard extends StatelessWidget {
   final Color well;
   final Color iconColor;
   final VoidCallback onTap;
+  final Color? gradientEnd; // optional second color for gradient
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: background,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: well, borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, size: deskIconSize, color: iconColor),
+    final hasGradient = gradientEnd != null;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: hasGradient
+            ? LinearGradient(
+                colors: [background, gradientEnd!],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        color: hasGradient ? null : background,
+        boxShadow: [
+          BoxShadow(
+            color: background.withValues(alpha: 0.35),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: deskHeadline.copyWith(color: foreground),
-          ),
-          const SizedBox(height: 2),
-          Text(label, style: deskCaption.copyWith(color: foreground.withValues(alpha: 0.8))),
-            ],
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          splashColor: foreground.withValues(alpha: 0.08),
+          highlightColor: foreground.withValues(alpha: 0.04),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top row: icon left, value number right
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Icon container with subtle border
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: well,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: foreground.withValues(alpha: 0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(icon, size: 17, color: iconColor),
+                    ),
+                    const Spacer(),
+                    // Big number right-aligned
+                    Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: deskFont,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: foreground,
+                        height: 1.0,
+                        letterSpacing: -0.8,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Label at bottom
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: deskFont,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                    color: foreground.withValues(alpha: 0.80),
+                    height: 1.3,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -516,17 +602,17 @@ class _WhiteCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppConstants.line),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: child,
           ),
         ),
